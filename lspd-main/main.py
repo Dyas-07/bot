@@ -40,12 +40,25 @@ async def hello(ctx):
 
 # --- NOVO COMANDO: !clear ---
 @bot.command(name="clear", help="Limpa um número especificado de mensagens no canal. Uso: !clear <quantidade>")
-@commands.has_permissions(manage_messages=True) # Requer permissão de gerenciar mensagens
+# @commands.has_permissions(manage_messages=True) # Removido para usar permissão por cargo
 async def clear_messages(ctx, amount: int):
     """
     Limpa um número especificado de mensagens no canal onde o comando foi invocado.
-    Apenas utilizadores com permissão de 'Gerenciar Mensagens' podem usar.
+    Apenas utilizadores com o cargo especificado em ROLE_ID podem usar.
     """
+    # Verifica se o comando foi usado num servidor
+    if not isinstance(ctx.author, discord.Member):
+        await ctx.send("Este comando só pode ser usado num servidor.", ephemeral=True)
+        return
+
+    # Tenta obter o cargo pelo ID configurado em config.py
+    required_role = discord.utils.get(ctx.author.roles, id=ROLE_ID)
+
+    # Verifica se o utilizador tem o cargo necessário
+    if required_role is None:
+        await ctx.send("🚫 Não tens permissões para usar este comando. Requer o cargo autorizado.", ephemeral=True)
+        return
+
     if amount <= 0:
         await ctx.send("Por favor, especifique um número positivo de mensagens para limpar.", ephemeral=True)
         return
