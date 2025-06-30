@@ -1,14 +1,14 @@
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands, tasks # tasks ainda é necessário para outros cogs, mas não para auto-close aqui
 from datetime import datetime, timedelta, timezone
 import asyncio
 import os
 import pytz
 
 # Importa funções do nosso módulo database
-from database import record_punch_in, record_punch_out, get_open_punches_for_auto_close, auto_record_punch_out
+from database import record_punch_in, record_punch_out # get_open_punches_for_auto_close e auto_record_punch_out removidos
 # Importa configurações do nosso módulo config
-from config import PUNCH_CHANNEL_ID, PUNCH_MESSAGE_FILE, PUNCH_LOGS_CHANNEL_ID, ROLE_ID, DISPLAY_TIMEZONE, AUTO_CLOSE_PUNCH_THRESHOLD_HOURS, AUTO_CLOSE_CHECK_INTERVAL_MINUTES
+from config import PUNCH_CHANNEL_ID, PUNCH_MESSAGE_FILE, PUNCH_LOGS_CHANNEL_ID, DISPLAY_TIMEZONE # AUTO_CLOSE_PUNCH_THRESHOLD_HOURS e AUTO_CLOSE_CHECK_INTERVAL_MINUTES removidos
 
 # Carrega o objeto de fuso horário para exibição
 try:
@@ -75,8 +75,7 @@ class PunchCardCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self._punch_message_id = None
-        # NOVO: Adiciona um tipo de exceção para a tarefa em loop para capturar qualquer erro
-        self.auto_close_punches.add_exception_type(Exception)
+        # self.auto_close_punches.add_exception_type(Exception) # Removido
 
     async def _load_punch_message_id(self):
         """Carrega o ID da mensagem de picagem de ponto de um arquivo."""
@@ -97,7 +96,8 @@ class PunchCardCog(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         """
-        Quando o bot reconecta, adicionamos a View persistente e iniciamos a tarefa de fechamento automático.
+        Quando o bot reconecta, adicionamos a View persistente.
+        A tarefa de fechamento automático foi removida.
         """
         print("PunchCardCog está pronto.")
         await self._load_punch_message_id()
@@ -119,79 +119,22 @@ class PunchCardCog(commands.Cog):
                 print(f"Erro ao re-associar a View de picagem de ponto: {e}")
                 self._punch_message_id = None
 
-        # NOVO DEBUG: Confirma o intervalo antes de iniciar a tarefa
-        print(f"DEBUG: auto_close_punches - Intervalo configurado: {AUTO_CLOSE_CHECK_INTERVAL_MINUTES} minutos.")
-        self.auto_close_punches.start()
-        print("Tarefa de fechamento automático de ponto iniciada.")
+        # self.auto_close_punches.start() # Removido
+        # print("Tarefa de fechamento automático de ponto iniciada.") # Removido
 
-    # --- Tarefa de Fechamento Automático de Ponto ---
-    @tasks.loop(minutes=AUTO_CLOSE_CHECK_INTERVAL_MINUTES)
-    async def auto_close_punches(self):
-        """
-        Verifica periodicamente por pontos abertos que excederam o limite de tempo
-        e os fecha automaticamente.
-        """
-        # NOVO DEBUG: Esta mensagem deve aparecer repetidamente se o loop estiver a funcionar
-        print(f"DEBUG: auto_close_punches - INÍCIO DA EXECUÇÃO DO LOOP em {datetime.now(timezone.utc).astimezone(DISPLAY_TZ).strftime('%d/%m/%Y %H:%M:%S')}")
-        
-        try:
-            print(f"DEBUG: auto_close_punches - Executando verificação de auto-fechamento em {datetime.now(timezone.utc).astimezone(DISPLAY_TZ).strftime('%d/%m/%Y %H:%M:%S')}")
-            
-            open_punches = get_open_punches_for_auto_close()
-            print(f"DEBUG: auto_close_punches - Encontrados {len(open_punches)} pontos abertos no DB.")
-            
-            current_time_utc = datetime.now(timezone.utc)
-            
-            for punch in open_punches:
-                punch_id = punch['id']
-                user_id = punch['user_id']
-                username = punch['username']
-                punch_in_time_str = punch['punch_in_time']
-                punch_in_time_utc = datetime.fromisoformat(punch_in_time_str)
+    # --- Tarefa de Fechamento Automático de Ponto (REMOVIDA) ---
+    # @tasks.loop(minutes=AUTO_CLOSE_CHECK_INTERVAL_MINUTES)
+    # async def auto_close_punches(self):
+    #     """
+    #     Verifica periodicamente por pontos abertos que excederam o limite de tempo
+    #     e os fecha automaticamente.
+    #     """
+    #     # ... (todo o conteúdo da função foi removido)
 
-                time_elapsed = current_time_utc - punch_in_time_utc
-                
-                threshold = timedelta(hours=AUTO_CLOSE_PUNCH_THRESHOLD_HOURS)
-
-                print(f"DEBUG: auto_close_punches - Ponto ID {punch_id} de {username}: Entrada UTC={punch_in_time_utc.strftime('%H:%M:%S')}, Decorrido={time_elapsed}, Limite={threshold}.")
-
-                if time_elapsed >= threshold:
-                    print(f"DEBUG: auto_close_punches - Ponto de {username} (ID: {user_id}) EXCEDEU o limite. Fechando automaticamente.")
-                    auto_punch_out_time_utc = current_time_utc
-                    
-                    auto_record_punch_out(punch_id, auto_punch_out_time_utc)
-                    print(f"DEBUG: auto_close_punches - Ponto {punch_id} ATUALIZADO no DB.")
-
-                    total_seconds = int(time_elapsed.total_seconds())
-                    hours, remainder = divmod(total_seconds, 3600)
-                    minutes, seconds = divmod(remainder, 60)
-                    formatted_time_elapsed = f"{hours}h {minutes}m {seconds}s"
-                    
-                    logs_channel = self.bot.get_channel(PUNCH_LOGS_CHANNEL_ID)
-                    if logs_channel:
-                        punch_in_time_display = punch_in_time_utc.astimezone(DISPLAY_TZ)
-                        auto_punch_out_time_display = auto_punch_out_time_utc.astimezone(DISPLAY_TZ)
-
-                        log_message = (
-                            f"🟡 **{username}** (`{user_id}`) teve o ponto fechado automaticamente "
-                            f"por estar aberto por mais de {AUTO_CLOSE_PUNCH_THRESHOLD_HOURS} horas.\n"
-                            f"Entrada: `{punch_in_time_display.strftime('%d/%m/%Y %H:%M:%S')}` | Saída Automática: `{auto_punch_out_time_display.strftime('%d/%m/%Y %H:%M:%S')}` | Duração: `{formatted_time_elapsed}`."
-                        )
-                        await logs_channel.send(log_message)
-                        print(f"Ponto de {username} (ID: {user_id}) fechado automaticamente.")
-                    else:
-                        print(f"Erro: Canal de logs com ID {PUNCH_LOGS_CHANNEL_ID} não encontrado para registrar fechamento automático.")
-                else:
-                    print(f"DEBUG: auto_close_punches - Ponto de {username} (ID: {user_id}) NÃO atingiu o limite de tempo. Tempo restante: {threshold - time_elapsed}.")
-        except Exception as e:
-            print(f"ERRO CRÍTICO na tarefa auto_close_punches: {e}") # Captura qualquer erro no loop
-            # Se a tarefa parar aqui, o traceback será impresso nos logs.
-            # Não reiniciamos automaticamente para investigar a causa raiz.
-            
-    @auto_close_punches.before_loop
-    async def before_auto_close_punches(self):
-        await self.bot.wait_until_ready()
-        print("DEBUG: Tarefa de auto-close está aguardando o bot ficar pronto antes do primeiro loop.")
+    # @auto_close_punches.before_loop # Removido
+    # async def before_auto_close_punches(self): # Removido
+    #     await self.bot.wait_until_ready()
+    #     print("DEBUG: Tarefa de auto-close: bot está pronto, iniciando loop.")
 
     # --- Comandos Administrativos ---
 
