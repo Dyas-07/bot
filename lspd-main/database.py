@@ -1,6 +1,6 @@
 import os
 import psycopg2
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone # Adicionado 'timezone'
 
 def get_db_connection():
     """
@@ -79,7 +79,7 @@ def record_punch_in(user_id: int, username: str) -> bool:
             print(f"DEBUG: record_punch_in - {username} ({user_id}) JÁ está em serviço com ID {existing_punch[0]}.")
             return False
 
-        current_time = datetime.now()
+        current_time = datetime.now(timezone.utc) # CORRIGIDO: Usar datetime.now(timezone.utc)
         print(f"DEBUG: record_punch_in - Registrando entrada para {username} ({user_id}) em {current_time}...")
         cursor.execute("INSERT INTO punches (user_id, username, punch_in_time) VALUES (%s, %s, %s)",
                        (user_id, username, current_time))
@@ -114,7 +114,7 @@ def record_punch_out(user_id: int) -> tuple[bool, timedelta | None]:
             punch_id, punch_in_time = active_punch[0], active_punch[1] 
             print(f"DEBUG: record_punch_out - Ponto aberto encontrado: ID {punch_id}, Entrada {punch_in_time}.")
             
-            current_time = datetime.now()
+            current_time = datetime.now(timezone.utc) # CORRIGIDO: Usar datetime.now(timezone.utc)
             time_diff = current_time - punch_in_time
             
             print(f"DEBUG: record_punch_out - Atualizando ponto ID {punch_id} com saída {current_time}...")
@@ -146,16 +146,19 @@ def get_punches_for_period(start_time: datetime, end_time: datetime):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        adjusted_end_time = end_time.replace(hour=23, minute=59, second=59, microsecond=999999)
-        print(f"DEBUG: get_punches_for_period - Buscando pontos de {start_time} a {adjusted_end_time}...")
+        # Garante que a end_time inclua todo o último dia (até o último microssegundo)
+        # E que o start_time também seja timezone-aware para a comparação
+        adjusted_start_time = start_time.replace(tzinfo=timezone.utc) if start_time.tzinfo is None else start_time
+        adjusted_end_time = end_time.replace(hour=23, minute=59, second=59, microsecond=999999, tzinfo=timezone.utc) if end_time.tzinfo is None else end_time
 
+        print(f"DEBUG: get_punches_for_period - Buscando pontos de {adjusted_start_time} a {adjusted_end_time}...")
         cursor.execute("""
             SELECT user_id, username, punch_in_time, punch_out_time
             FROM punches
             WHERE punch_in_time BETWEEN %s AND %s
             AND punch_out_time IS NOT NULL
             ORDER BY punch_in_time ASC
-        """, (start_time, adjusted_end_time))
+        """, (adjusted_start_time, adjusted_end_time))
 
         results = []
         for row in cursor.fetchall():
@@ -214,9 +217,11 @@ def auto_record_punch_out(punch_id: int, auto_punch_out_time: datetime):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        print(f"DEBUG: auto_record_punch_out - Registrando saída automática para ID {punch_id} em {auto_punch_out_time}...")
+        # Garante que auto_punch_out_time é timezone-aware
+        auto_punch_out_time_aware = auto_punch_out_time.replace(tzinfo=timezone.utc) if auto_punch_out_time.tzinfo is None else auto_punch_out_time
+        print(f"DEBUG: auto_record_punch_out - Registrando saída automática para ID {punch_id} em {auto_punch_out_time_aware}...")
         cursor.execute("UPDATE punches SET punch_out_time = %s WHERE id = %s",
-                       (auto_punch_out_time, punch_id))
+                       (auto_punch_out_time_aware, punch_id)) # Passa objeto datetime diretamente
         conn.commit()
         print(f"DEBUG: auto_record_punch_out - Saída automática para ID {punch_id} REGISTRADA e commitada.")
     except Exception as e:
@@ -258,7 +263,7 @@ def add_ticket_to_db(channel_id: int, creator_id: int, creator_name: str, catego
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        created_at = datetime.now()
+        created_at = datetime.now(timezone.utc) # CORRIGIDO: Usar datetime.now(timezone.utc)
         
         print(f"DEBUG: add_ticket_to_db - Tentando adicionar ticket para canal {channel_id}...")
         cursor.execute("INSERT INTO tickets (channel_id, creator_id, creator_name, category, created_at) VALUES (%s, %s, %s, %s, %s) ON CONFLICT (channel_id) DO NOTHING",
@@ -315,7 +320,6 @@ def get_all_open_tickets():
                 'category': t[3],
                 'created_at': t[4].isoformat()
             })
-        print(f"DEBUG: get_all_open_tickets - Encontrados {len(tickets_formatted)} tickets.")
         return tickets_formatted
     except Exception as e:
         print(f"ERRO: Falha ao obter tickets abertos do DB PostgreSQL: {e}")
