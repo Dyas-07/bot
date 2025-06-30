@@ -52,3 +52,9 @@ ACTIVITY_CHANGE_INTERVAL_SECONDS = 30 # 30 segundos
 # Use nomes de fusos horários do banco de dados IANA (ex: 'Europe/Lisbon', 'America/Sao_Paulo', 'America/New_York')
 # Veja a lista completa aqui: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 DISPLAY_TIMEZONE = 'Europe/Lisbon' # Altere para o seu fuso horário desejado
+
+# --- Configurações de Notificação de Ponto Atrasado ---
+# Limite de horas para enviar notificação de ponto aberto (Ex: 4 horas)
+PUNCH_OVERDUE_NOTIFICATION_THRESHOLD_HOURS = 3
+# Intervalo em que o bot verifica pontos abertos para notificação (em minutos)
+PUNCH_OVERDUE_NOTIFICATION_CHECK_INTERVAL_MINUTES = 15 # Verifica a cada 15 minutos
