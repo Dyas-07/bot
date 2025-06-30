@@ -1,2 +1,3 @@
 discord.py==2.3.2 # Ou a versão que você preferir usar, mas é importante fixar.
 psycopg2-binary # Para conexão com PostgreSQL
+pytz
