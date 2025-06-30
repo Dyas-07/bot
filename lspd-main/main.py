@@ -60,19 +60,20 @@ async def clear_messages(ctx, amount: int):
 
     try:
         deleted = await ctx.channel.purge(limit=amount + 1)
-        await ctx.followup.send(f"✅ Foram limpas {len(deleted) - 1} mensagens.", ephemeral=True)
+        # CORRIGIDO: Usar ctx.send em vez de ctx.followup.send para comandos de prefixo
+        await ctx.send(f"✅ Foram limpas {len(deleted) - 1} mensagens.", ephemeral=True)
         print(f"Comando !clear executado por {ctx.author.display_name}. Limpou {len(deleted) - 1} mensagens no canal {ctx.channel.name}.")
     except discord.Forbidden:
-        await ctx.followup.send("❌ Não tenho permissão para gerenciar mensagens neste canal. Por favor, verifique as minhas permissões.", ephemeral=True)
+        await ctx.send("❌ Não tenho permissão para gerenciar mensagens neste canal. Por favor, verifique as minhas permissões.", ephemeral=True)
         print(f"Erro de permissão ao tentar limpar mensagens no canal {ctx.channel.name}.")
     except discord.HTTPException as e:
-        await ctx.followup.send(f"❌ Ocorreu um erro ao tentar limpar mensagens: {e}", ephemeral=True)
+        await ctx.send(f"❌ Ocorreu um erro ao tentar limpar mensagens: {e}", ephemeral=True)
         print(f"Erro HTTP ao tentar limpar mensagens no canal {ctx.channel.name}: {e}")
     except Exception as e:
-        await ctx.followup.send(f"❌ Ocorreu um erro inesperado: {e}", ephemeral=True)
+        await ctx.send(f"❌ Ocorreu um erro inesperado: {e}", ephemeral=True)
         print(f"Erro inesperado ao limpar mensagens: {e}")
 
-# --- NOVO COMANDO: !clearpunchdb ---
+# --- COMANDO: !clearpunchdb ---
 @bot.command(name="clearpunchdb", help="Limpa todos os registos da base de dados de picagem de ponto.")
 async def clear_punch_db_command(ctx):
     """
@@ -94,10 +95,12 @@ async def clear_punch_db_command(ctx):
     success = clear_punches_table() # Chama a nova função do database.py
 
     if success:
-        await ctx.followup.send("✅ Todos os registos da base de dados de picagem de ponto foram limpos com sucesso!", ephemeral=True)
+        # CORRIGIDO: Usar ctx.send em vez de ctx.followup.send para comandos de prefixo
+        await ctx.send("✅ Todos os registos da base de dados de picagem de ponto foram limpos com sucesso!", ephemeral=True)
         print(f"Comando !clearpunchdb executado por {ctx.author.display_name}. Registos de picagem de ponto limpos.")
     else:
-        await ctx.followup.send("❌ Ocorreu um erro ao tentar limpar os registos da base de dados de picagem de ponto.", ephemeral=True)
+        # CORRIGIDO: Usar ctx.send em vez de ctx.followup.send para comandos de prefixo
+        await ctx.send("❌ Ocorreu um erro ao tentar limpar os registos da base de dados de picagem de ponto.", ephemeral=True)
         print(f"Erro ao executar !clearpunchdb por {ctx.author.display_name}.")
 
 # --- Evento on_ready ---
