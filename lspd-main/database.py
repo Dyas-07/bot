@@ -176,60 +176,7 @@ def get_punches_for_period(start_time: datetime, end_time: datetime):
         if conn:
             conn.close()
 
-def get_open_punches_for_auto_close():
-    """
-    Retorna todos os registros de ponto que estão abertos (punch_out_time IS NULL) no PostgreSQL.
-    Retorna uma lista de dicionários para compatibilidade com os cogs.
-    """
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        print(f"DEBUG: get_open_punches_for_auto_close - Buscando todos os pontos abertos...")
-        cursor.execute("""
-            SELECT id, user_id, username, punch_in_time
-            FROM punches
-            WHERE punch_out_time IS NULL
-        """)
-        results = []
-        for row in cursor.fetchall():
-            results.append({
-                'id': row[0],
-                'user_id': row[1],
-                'username': row[2],
-                'punch_in_time': row[3].isoformat()
-            })
-        print(f"DEBUG: get_open_punches_for_auto_close - Encontrados {len(results)} pontos abertos.")
-        return results
-    except Exception as e:
-        print(f"ERRO: Falha ao obter pontos abertos no PostgreSQL: {e}")
-        return []
-    finally:
-        if conn:
-            conn.close()
-
-def auto_record_punch_out(punch_id: int, auto_punch_out_time: datetime):
-    """
-    Registra uma saída automática para um registro de ponto específico no PostgreSQL.
-    """
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        # Garante que auto_punch_out_time é timezone-aware (já deve ser UTC aqui)
-        # Não precisa de .replace(tzinfo=timezone.utc) se já vem de datetime.now(timezone.utc)
-        print(f"DEBUG: auto_record_punch_out - Registrando saída automática para ID {punch_id} em {auto_punch_out_time}...")
-        cursor.execute("UPDATE punches SET punch_out_time = %s WHERE id = %s",
-                       (auto_punch_out_time, punch_id))
-        conn.commit()
-        print(f"DEBUG: auto_record_punch_out - Saída automática para ID {punch_id} REGISTRADA e commitada.")
-    except Exception as e:
-        print(f"ERRO: Falha ao registrar saída automática de ponto no PostgreSQL para ID {punch_id}: {e}")
-        if conn:
-            conn.rollback()
-    finally:
-        if conn:
-            conn.close()
+# --- get_open_punches_for_auto_close() e auto_record_punch_out() REMOVIDAS ---
 
 # --- Função para limpar a tabela de picagem de ponto ---
 def clear_punches_table() -> bool:
