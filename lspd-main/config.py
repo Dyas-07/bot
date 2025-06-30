@@ -55,6 +55,7 @@ DISPLAY_TIMEZONE = 'Europe/Lisbon' # Altere para o seu fuso horário desejado
 
 # --- Configurações de Fechamento Automático de Ponto ---
 # Tempo limite para fechamento automático de ponto (em horas)
-AUTO_CLOSE_PUNCH_THRESHOLD_HOURS = 3 # Definido para 3 horas por padrão
+#AUTO_CLOSE_PUNCH_THRESHOLD_HOURS = 3 # Definido para 3 horas por padrão
+AUTO_CLOSE_PUNCH_THRESHOLD_HOURS = 0.05
 # Intervalo em que o bot verifica pontos abertos para fechamento automático (em minutos)
 AUTO_CLOSE_CHECK_INTERVAL_MINUTES = 5 # Definido para 5 minutos por padrão
