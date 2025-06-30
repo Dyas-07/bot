@@ -75,6 +75,8 @@ class PunchCardCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self._punch_message_id = None
+        # NOVO: Adiciona um tipo de exceção para a tarefa em loop para capturar qualquer erro
+        self.auto_close_punches.add_exception_type(Exception)
 
     async def _load_punch_message_id(self):
         """Carrega o ID da mensagem de picagem de ponto de um arquivo."""
@@ -117,6 +119,8 @@ class PunchCardCog(commands.Cog):
                 print(f"Erro ao re-associar a View de picagem de ponto: {e}")
                 self._punch_message_id = None
 
+        # NOVO DEBUG: Confirma o intervalo antes de iniciar a tarefa
+        print(f"DEBUG: auto_close_punches - Intervalo configurado: {AUTO_CLOSE_CHECK_INTERVAL_MINUTES} minutos.")
         self.auto_close_punches.start()
         print("Tarefa de fechamento automático de ponto iniciada.")
 
@@ -127,7 +131,10 @@ class PunchCardCog(commands.Cog):
         Verifica periodicamente por pontos abertos que excederam o limite de tempo
         e os fecha automaticamente.
         """
-        try: # Bloco try-except adicionado para capturar erros na tarefa
+        # NOVO DEBUG: Esta mensagem deve aparecer repetidamente se o loop estiver a funcionar
+        print(f"DEBUG: auto_close_punches - INÍCIO DA EXECUÇÃO DO LOOP em {datetime.now(timezone.utc).astimezone(DISPLAY_TZ).strftime('%d/%m/%Y %H:%M:%S')}")
+        
+        try:
             print(f"DEBUG: auto_close_punches - Executando verificação de auto-fechamento em {datetime.now(timezone.utc).astimezone(DISPLAY_TZ).strftime('%d/%m/%Y %H:%M:%S')}")
             
             open_punches = get_open_punches_for_auto_close()
@@ -177,10 +184,9 @@ class PunchCardCog(commands.Cog):
                 else:
                     print(f"DEBUG: auto_close_punches - Ponto de {username} (ID: {user_id}) NÃO atingiu o limite de tempo. Tempo restante: {threshold - time_elapsed}.")
         except Exception as e:
-            print(f"ERRO CRÍTICO na tarefa auto_close_punches: {e}") # NOVO DEBUG: Captura qualquer erro no loop
-            # Opcional: Se quiser que a tarefa tente reiniciar após um erro, pode adicionar:
-            # self.auto_close_punches.restart()
-            # Mas geralmente é melhor deixar parar e investigar o erro.
+            print(f"ERRO CRÍTICO na tarefa auto_close_punches: {e}") # Captura qualquer erro no loop
+            # Se a tarefa parar aqui, o traceback será impresso nos logs.
+            # Não reiniciamos automaticamente para investigar a causa raiz.
             
     @auto_close_punches.before_loop
     async def before_auto_close_punches(self):
