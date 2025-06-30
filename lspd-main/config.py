@@ -55,6 +55,6 @@ DISPLAY_TIMEZONE = 'Europe/Lisbon' # Altere para o seu fuso horário desejado
 
 # --- Configurações de Notificação de Ponto Atrasado ---
 # Limite de horas para enviar notificação de ponto aberto (Ex: 4 horas)
-PUNCH_OVERDUE_NOTIFICATION_THRESHOLD_HOURS = 3
+PUNCH_OVERDUE_NOTIFICATION_THRESHOLD_HOURS = 0.05
 # Intervalo em que o bot verifica pontos abertos para notificação (em minutos)
 PUNCH_OVERDUE_NOTIFICATION_CHECK_INTERVAL_MINUTES = 15 # Verifica a cada 15 minutos
