@@ -1,14 +1,14 @@
 import discord
-from discord.ext import commands, tasks # tasks ainda é necessário para outros cogs, mas não para auto-close aqui
+from discord.ext import commands, tasks
 from datetime import datetime, timedelta, timezone
 import asyncio
 import os
 import pytz
 
 # Importa funções do nosso módulo database
-from database import record_punch_in, record_punch_out # get_open_punches_for_auto_close e auto_record_punch_out removidos
+from database import record_punch_in, record_punch_out, get_punches_for_overdue_notification # Removido get_open_punches_for_auto_close, auto_record_punch_out
 # Importa configurações do nosso módulo config
-from config import PUNCH_CHANNEL_ID, PUNCH_MESSAGE_FILE, PUNCH_LOGS_CHANNEL_ID, DISPLAY_TIMEZONE # AUTO_CLOSE_PUNCH_THRESHOLD_HOURS e AUTO_CLOSE_CHECK_INTERVAL_MINUTES removidos
+from config import PUNCH_CHANNEL_ID, PUNCH_MESSAGE_FILE, PUNCH_LOGS_CHANNEL_ID, DISPLAY_TIMEZONE, PUNCH_OVERDUE_NOTIFICATION_THRESHOLD_HOURS, PUNCH_OVERDUE_NOTIFICATION_CHECK_INTERVAL_MINUTES
 
 # Carrega o objeto de fuso horário para exibição
 try:
@@ -76,6 +76,7 @@ class PunchCardCog(commands.Cog):
         self.bot = bot
         self._punch_message_id = None
         # self.auto_close_punches.add_exception_type(Exception) # Removido
+        self.overdue_punch_notifier.add_exception_type(Exception) # NOVO: Adiciona tratamento de exceção para a nova tarefa
 
     async def _load_punch_message_id(self):
         """Carrega o ID da mensagem de picagem de ponto de um arquivo."""
@@ -96,8 +97,7 @@ class PunchCardCog(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         """
-        Quando o bot reconecta, adicionamos a View persistente.
-        A tarefa de fechamento automático foi removida.
+        Quando o bot reconecta, adicionamos a View persistente e iniciamos a tarefa de notificação.
         """
         print("PunchCardCog está pronto.")
         await self._load_punch_message_id()
@@ -119,22 +119,68 @@ class PunchCardCog(commands.Cog):
                 print(f"Erro ao re-associar a View de picagem de ponto: {e}")
                 self._punch_message_id = None
 
-        # self.auto_close_punches.start() # Removido
-        # print("Tarefa de fechamento automático de ponto iniciada.") # Removido
+        # Inicia a nova tarefa de notificação de ponto atrasado
+        print(f"DEBUG: over_due_punch_notifier - Intervalo configurado: {PUNCH_OVERDUE_NOTIFICATION_CHECK_INTERVAL_MINUTES} minutos.")
+        self.overdue_punch_notifier.start()
+        print("Tarefa de notificação de ponto atrasado iniciada.")
 
-    # --- Tarefa de Fechamento Automático de Ponto (REMOVIDA) ---
-    # @tasks.loop(minutes=AUTO_CLOSE_CHECK_INTERVAL_MINUTES)
-    # async def auto_close_punches(self):
-    #     """
-    #     Verifica periodicamente por pontos abertos que excederam o limite de tempo
-    #     e os fecha automaticamente.
-    #     """
-    #     # ... (todo o conteúdo da função foi removido)
+    # --- NOVIDADE: Tarefa de Notificação de Ponto Atrasado ---
+    @tasks.loop(minutes=PUNCH_OVERDUE_NOTIFICATION_CHECK_INTERVAL_MINUTES)
+    async def overdue_punch_notifier(self):
+        """
+        Verifica periodicamente por pontos abertos que excederam o limite de notificação
+        e envia uma mensagem privada ao utilizador.
+        """
+        print(f"DEBUG: overdue_punch_notifier - INÍCIO DA EXECUÇÃO DO LOOP em {datetime.now(timezone.utc).astimezone(DISPLAY_TZ).strftime('%d/%m/%Y %H:%M:%S')}")
+        
+        try:
+            overdue_punches = get_punches_for_overdue_notification(PUNCH_OVERDUE_NOTIFICATION_THRESHOLD_HOURS)
+            print(f"DEBUG: overdue_punch_notifier - Encontrados {len(overdue_punches)} pontos atrasados para notificação.")
+            
+            for punch in overdue_punches:
+                user_id = punch['user_id']
+                username = punch['username']
+                punch_in_time_str = punch['punch_in_time']
+                punch_in_time_utc = datetime.fromisoformat(punch_in_time_str)
 
-    # @auto_close_punches.before_loop # Removido
-    # async def before_auto_close_punches(self): # Removido
-    #     await self.bot.wait_until_ready()
-    #     print("DEBUG: Tarefa de auto-close: bot está pronto, iniciando loop.")
+                # Calcula o tempo decorrido para a mensagem
+                current_time_utc = datetime.now(timezone.utc)
+                time_elapsed = current_time_utc - punch_in_time_utc
+                
+                total_seconds = int(time_elapsed.total_seconds())
+                hours, remainder = divmod(total_seconds, 3600)
+                minutes, seconds = divmod(remainder, 60)
+                formatted_time_elapsed = f"{hours}h {minutes}m {seconds}s"
+
+                try:
+                    user = self.bot.get_user(user_id) or await self.bot.fetch_user(user_id)
+                    if user:
+                        # Converte a hora de entrada para o fuso horário de exibição para a mensagem privada
+                        punch_in_time_display = punch_in_time_utc.astimezone(DISPLAY_TZ)
+                        
+                        dm_message = (
+                            f"Olá **{username}**,\n\n"
+                            f"Parece que você está em serviço há mais de **{PUNCH_OVERDUE_NOTIFICATION_THRESHOLD_HOURS} horas**!\n"
+                            f"Seu ponto foi registrado em: `{punch_in_time_display.strftime('%d/%m/%Y %H:%M:%S')}`.\n"
+                            f"Tempo decorrido: `{formatted_time_elapsed}`.\n\n"
+                            f"Por favor, certifique-se de picar o seu ponto de saída quando terminar o serviço."
+                        )
+                        await user.send(dm_message)
+                        print(f"DEBUG: Notificação de ponto atrasado enviada para {username} ({user_id}).")
+                    else:
+                        print(f"ERRO: Não foi possível encontrar o utilizador Discord com ID {user_id} para enviar notificação de ponto atrasado.")
+                except discord.Forbidden:
+                    print(f"AVISO: Não foi possível enviar DM para {username} ({user_id}). O utilizador pode ter DMs desativadas ou ter bloqueado o bot.")
+                except Exception as dm_e:
+                    print(f"ERRO: Falha ao enviar DM para {username} ({user_id}) para notificação de ponto atrasado: {dm_e}")
+
+        except Exception as e:
+            print(f"ERRO CRÍTICO na tarefa overdue_punch_notifier: {e}")
+            
+    @overdue_punch_notifier.before_loop
+    async def before_overdue_punch_notifier(self):
+        await self.bot.wait_until_ready()
+        print("DEBUG: Tarefa de notificação de ponto atrasado: bot está pronto, iniciando loop.")
 
     # --- Comandos Administrativos ---
 
