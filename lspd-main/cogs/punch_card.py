@@ -1,14 +1,14 @@
 import discord
 from discord.ext import commands, tasks
-from datetime import datetime, timedelta, timezone # Adicionado timezone
+from datetime import datetime, timedelta, timezone
 import asyncio
 import os
-import pytz # Importado para manipulação de fuso horário
+import pytz
 
-# Importa funções do nosso módulo database (agora para PostgreSQL)
+# Importa funções do nosso módulo database
 from database import record_punch_in, record_punch_out, get_open_punches_for_auto_close, auto_record_punch_out
 # Importa configurações do nosso módulo config
-from config import PUNCH_CHANNEL_ID, PUNCH_MESSAGE_FILE, PUNCH_LOGS_CHANNEL_ID, ROLE_ID, DISPLAY_TIMEZONE # Adicionado DISPLAY_TIMEZONE
+from config import PUNCH_CHANNEL_ID, PUNCH_MESSAGE_FILE, PUNCH_LOGS_CHANNEL_ID, ROLE_ID, DISPLAY_TIMEZONE
 
 # Tempo limite para fechamento automático de ponto (em horas)
 AUTO_CLOSE_PUNCH_THRESHOLD_HOURS = 3
@@ -25,17 +25,13 @@ except pytz.UnknownTimeZoneError:
 # --- Classe View para os Botões de Picagem de Ponto ---
 class PunchCardView(discord.ui.View):
     def __init__(self, cog_instance):
-        super().__init__(timeout=None) # timeout=None faz com que a view persista indefinidamente
-        self.cog = cog_instance # Referência para a instância do cog para acessar métodos
+        super().__init__(timeout=None)
+        self.cog = cog_instance
 
     @discord.ui.button(label="Entrar em Serviço", style=discord.ButtonStyle.success, emoji="🟢", custom_id="punch_in_button")
     async def punch_in_button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """
-        Callback para o botão 'Entrar em Serviço'.
-        """
         member = interaction.user
         
-        # Obtém a hora atual em UTC e converte para o fuso horário de exibição
         current_time_display = datetime.now(timezone.utc).astimezone(DISPLAY_TZ)
         current_time_str = current_time_display.strftime('%d/%m/%Y %H:%M:%S')
 
@@ -55,12 +51,8 @@ class PunchCardView(discord.ui.View):
 
     @discord.ui.button(label="Sair de Serviço", style=discord.ButtonStyle.danger, emoji="🔴", custom_id="punch_out_button")
     async def punch_out_button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        """
-        Callback para o botão 'Sair de Serviço'.
-        """
         member = interaction.user
         
-        # Obtém a hora atual em UTC e converte para o fuso horário de exibição
         current_time_display = datetime.now(timezone.utc).astimezone(DISPLAY_TZ)
         current_time_str = current_time_display.strftime('%d/%m/%Y %H:%M:%S')
 
@@ -111,29 +103,25 @@ class PunchCardCog(commands.Cog):
         Quando o bot reconecta, adicionamos a View persistente e iniciamos a tarefa de fechamento automático.
         """
         print("PunchCardCog está pronto.")
-        await self._load_punch_message_id() # Carrega o ID da mensagem de ponto
+        await self._load_punch_message_id()
 
         if self._punch_message_id:
-            # Tenta buscar a mensagem para garantir que existe antes de adicionar a view
             try:
                 channel = self.bot.get_channel(PUNCH_CHANNEL_ID)
                 if channel:
-                    # fetch_message é um método async que pode lançar discord.NotFound
                     await channel.fetch_message(self._punch_message_id) 
-                    # Re-adiciona a View para que os botões voltem a funcionar após um reinício do bot
                     self.bot.add_view(PunchCardView(self)) 
                     print(f"View de picagem de ponto persistente adicionada para a mensagem ID: {self._punch_message_id}")
                 else:
                     print(f"Aviso: Canal de picagem de ponto (ID: {PUNCH_CHANNEL_ID}) não encontrado para re-associar a View.")
-                    self._punch_message_id = None # Reseta para que o !setuppunch possa enviar uma nova mensagem
+                    self._punch_message_id = None
             except discord.NotFound:
                 print(f"Aviso: Mensagem de picagem de ponto (ID: {self._punch_message_id}) não encontrada, será recriada no próximo setup com !setuppunch.")
-                self._punch_message_id = None # Reseta para enviar nova mensagem
+                self._punch_message_id = None
             except Exception as e:
                 print(f"Erro ao re-associar a View de picagem de ponto: {e}")
-                self._punch_message_id = None # Reseta em caso de outros erros
+                self._punch_message_id = None
 
-        # Inicia a tarefa de fechamento automático de ponto
         self.auto_close_punches.start()
         print("Tarefa de fechamento automático de ponto iniciada.")
 
@@ -144,32 +132,32 @@ class PunchCardCog(commands.Cog):
         Verifica periodicamente por pontos abertos que excederam o limite de tempo
         e os fecha automaticamente.
         """
-        # print(f"DEBUG: Auto-close task executando em {datetime.now().strftime('%d/%m/%Y %H:%M:%S')})") # Descomente para debug
+        print(f"DEBUG: auto_close_punches - Executando verificação de auto-fechamento em {datetime.now(timezone.utc).astimezone(DISPLAY_TZ).strftime('%d/%m/%Y %H:%M:%S')}") # NOVO DEBUG
+        
         open_punches = get_open_punches_for_auto_close()
-        # print(f"DEBUG: Encontrados {len(open_punches)} pontos abertos no DB.") # Descomente para debug
-        current_time_utc = datetime.now(timezone.utc) # Hora atual em UTC para comparação
+        print(f"DEBUG: auto_close_punches - Encontrados {len(open_punches)} pontos abertos no DB.") # NOVO DEBUG
+        
+        current_time_utc = datetime.now(timezone.utc)
         
         for punch in open_punches:
             punch_id = punch['id']
             user_id = punch['user_id']
             username = punch['username']
             punch_in_time_str = punch['punch_in_time']
-            punch_in_time_utc = datetime.fromisoformat(punch_in_time_str) # Já é timezone-aware (UTC) do DB
+            punch_in_time_utc = datetime.fromisoformat(punch_in_time_str)
 
             time_elapsed = current_time_utc - punch_in_time_utc
             
-            # Converte o limite de horas para timedelta
             threshold = timedelta(hours=AUTO_CLOSE_PUNCH_THRESHOLD_HOURS)
 
-            # print(f"DEBUG: Ponto ID {punch_id} de {username}: Aberto em {punch_in_time_utc.strftime('%H:%M:%S')}, Tempo decorrido: {time_elapsed}, Limite: {threshold})") # Descomente para debug
+            print(f"DEBUG: auto_close_punches - Ponto ID {punch_id} de {username}: Entrada UTC={punch_in_time_utc.strftime('%H:%M:%S')}, Decorrido={time_elapsed}, Limite={threshold}.") # NOVO DEBUG
 
             if time_elapsed >= threshold:
-                # print(f"DEBUG: Ponto de {username} (ID: {user_id}) excedeu o limite. Fechando automaticamente.") # Descomente para debug
-                auto_punch_out_time_utc = current_time_utc # Hora de saída automática em UTC
+                print(f"DEBUG: auto_close_punches - Ponto de {username} (ID: {user_id}) EXCEDEU o limite. Fechando automaticamente.") # NOVO DEBUG
+                auto_punch_out_time_utc = current_time_utc
                 
-                # Chama a função do database para registrar a saída automática
                 auto_record_punch_out(punch_id, auto_punch_out_time_utc)
-                # print(f"DEBUG: Ponto {punch_id} atualizado no DB.") # Descomente para debug
+                print(f"DEBUG: auto_close_punches - Ponto {punch_id} ATUALIZADO no DB.") # NOVO DEBUG
 
                 total_seconds = int(time_elapsed.total_seconds())
                 hours, remainder = divmod(total_seconds, 3600)
@@ -178,7 +166,6 @@ class PunchCardCog(commands.Cog):
                 
                 logs_channel = self.bot.get_channel(PUNCH_LOGS_CHANNEL_ID)
                 if logs_channel:
-                    # Converte as horas de entrada e saída para o fuso horário de exibição para o log
                     punch_in_time_display = punch_in_time_utc.astimezone(DISPLAY_TZ)
                     auto_punch_out_time_display = auto_punch_out_time_utc.astimezone(DISPLAY_TZ)
 
@@ -191,18 +178,20 @@ class PunchCardCog(commands.Cog):
                     print(f"Ponto de {username} (ID: {user_id}) fechado automaticamente.")
                 else:
                     print(f"Erro: Canal de logs com ID {PUNCH_LOGS_CHANNEL_ID} não encontrado para registrar fechamento automático.")
+            else:
+                print(f"DEBUG: auto_close_punches - Ponto de {username} (ID: {user_id}) NÃO atingiu o limite de tempo. Tempo restante: {threshold - time_elapsed}.") # NOVO DEBUG
             
     @auto_close_punches.before_loop
     async def before_auto_close_punches(self):
-        await self.bot.wait_until_ready() # Espera o bot estar pronto antes de iniciar o loop
+        await self.bot.wait_until_ready()
         print("DEBUG: Tarefa de auto-close está aguardando o bot ficar pronto antes do primeiro loop.")
 
     # --- Comandos Administrativos ---
 
     @commands.command(name="setuppunch", help="Envia a mensagem de picagem de ponto para o canal configurado.")
-    @commands.has_permissions(administrator=True) # Apenas administradores podem usar
+    @commands.has_permissions(administrator=True)
     async def setup_punch_message(self, ctx: commands.Context):
-        await ctx.defer(ephemeral=True) # Defer para que o bot "pense"
+        await ctx.defer(ephemeral=True)
 
         channel = self.bot.get_channel(PUNCH_CHANNEL_ID)
         if not channel:
@@ -225,25 +214,22 @@ class PunchCardCog(commands.Cog):
         view = PunchCardView(self)
 
         try:
-            if self._punch_message_id: # Se já existe um ID de mensagem salvo
-                message = await channel.fetch_message(self._punch_message_id) # Tenta buscar a mensagem existente
-                await message.edit(embed=embed, view=view) # Atualiza a embed e a view
+            if self._punch_message_id:
+                message = await channel.fetch_message(self._punch_message_id) 
+                await message.edit(embed=embed, view=view)
                 await ctx.send("Mensagem de picagem de ponto atualizada com sucesso!", ephemeral=True)
-            else: # Se não há ID salvo, envia uma nova mensagem
+            else:
                 message = await channel.send(embed=embed, view=view)
-                await self._save_punch_message_id(message.id) # Salva o ID da nova mensagem
+                await self._save_punch_message_id(message.id)
                 await ctx.send("Mensagem de picagem de ponto enviada com sucesso!", ephemeral=True)
-        except discord.NotFound: # Se o ID estava salvo mas a mensagem foi deletada
+        except discord.NotFound:
             print("Mensagem de picagem de ponto não encontrada, recriando...")
             message = await channel.send(embed=embed, view=view)
             await self._save_punch_message_id(message.id)
             await ctx.send("Mensagem de picagem de ponto recriada com sucesso!", ephemeral=True)
-        except Exception as e: # Qualquer outro erro durante o envio/atualização
+        except Exception as e:
             await ctx.send(f"Erro ao enviar/atualizar mensagem de picagem de ponto: {e}", ephemeral=True)
             print(f"Erro ao enviar/atualizar mensagem de picagem de ponto: {e}")
 
 async def setup(bot):
-    """
-    Função necessária para que o Discord.py possa carregar este cog.
-    """
     await bot.add_cog(PunchCardCog(bot))
