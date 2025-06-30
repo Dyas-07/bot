@@ -38,6 +38,38 @@ async def hello(ctx):
     else:
         await ctx.send("A atual mascote da LSPD é o SKIBIDI ZEKA!")
 
+# --- NOVO COMANDO: !clear ---
+@bot.command(name="clear", help="Limpa um número especificado de mensagens no canal. Uso: !clear <quantidade>")
+@commands.has_permissions(manage_messages=True) # Requer permissão de gerenciar mensagens
+async def clear_messages(ctx, amount: int):
+    """
+    Limpa um número especificado de mensagens no canal onde o comando foi invocado.
+    Apenas utilizadores com permissão de 'Gerenciar Mensagens' podem usar.
+    """
+    if amount <= 0:
+        await ctx.send("Por favor, especifique um número positivo de mensagens para limpar.", ephemeral=True)
+        return
+    
+    # Defer a resposta para que o bot "pense" enquanto processa.
+    # ephemeral=True para que a mensagem de deferência seja privada.
+    await ctx.defer(ephemeral=True) 
+
+    try:
+        # +1 para incluir a própria mensagem do comando !clear
+        deleted = await ctx.channel.purge(limit=amount + 1)
+        # Envia uma confirmação privada para o utilizador que usou o comando
+        await ctx.followup.send(f"✅ Foram limpas {len(deleted) - 1} mensagens.", ephemeral=True)
+        print(f"Comando !clear executado por {ctx.author.display_name}. Limpou {len(deleted) - 1} mensagens no canal {ctx.channel.name}.")
+    except discord.Forbidden:
+        await ctx.followup.send("❌ Não tenho permissão para gerenciar mensagens neste canal. Por favor, verifique as minhas permissões.", ephemeral=True)
+        print(f"Erro de permissão ao tentar limpar mensagens no canal {ctx.channel.name}.")
+    except discord.HTTPException as e:
+        await ctx.followup.send(f"❌ Ocorreu um erro ao tentar limpar mensagens: {e}", ephemeral=True)
+        print(f"Erro HTTP ao tentar limpar mensagens no canal {ctx.channel.name}: {e}")
+    except Exception as e:
+        await ctx.followup.send(f"❌ Ocorreu um erro inesperado: {e}", ephemeral=True)
+        print(f"Erro inesperado ao limpar mensagens: {e}")
+
 # --- Evento on_ready ---
 @bot.event
 async def on_ready():
