@@ -72,19 +72,19 @@ def record_punch_in(user_id: int, username: str) -> bool:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        print(f"DEBUG: record_punch_in - Verificando se {username} ({user_id}) já está em serviço...") # NOVO DEBUG
+        print(f"DEBUG: record_punch_in - Verificando se {username} ({user_id}) já está em serviço...")
         cursor.execute("SELECT id FROM punches WHERE user_id = %s AND punch_out_time IS NULL", (user_id,))
-        existing_punch = cursor.fetchone() # NOVO DEBUG
+        existing_punch = cursor.fetchone()
         if existing_punch:
-            print(f"DEBUG: record_punch_in - {username} ({user_id}) JÁ está em serviço com ID {existing_punch[0]}.") # NOVO DEBUG
+            print(f"DEBUG: record_punch_in - {username} ({user_id}) JÁ está em serviço com ID {existing_punch[0]}.")
             return False
 
         current_time = datetime.now()
-        print(f"DEBUG: record_punch_in - Registrando entrada para {username} ({user_id}) em {current_time}...") # NOVO DEBUG
+        print(f"DEBUG: record_punch_in - Registrando entrada para {username} ({user_id}) em {current_time}...")
         cursor.execute("INSERT INTO punches (user_id, username, punch_in_time) VALUES (%s, %s, %s)",
                        (user_id, username, current_time))
         conn.commit()
-        print(f"DEBUG: record_punch_in - Entrada para {username} ({user_id}) REGISTRADA e commitada.") # NOVO DEBUG
+        print(f"DEBUG: record_punch_in - Entrada para {username} ({user_id}) REGISTRADA e commitada.")
         return True
     except Exception as e:
         print(f"ERRO: Falha ao registrar entrada de ponto no PostgreSQL para {username}: {e}")
@@ -106,25 +106,25 @@ def record_punch_out(user_id: int) -> tuple[bool, timedelta | None]:
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        print(f"DEBUG: record_punch_out - Procurando último ponto aberto para {user_id}...") # NOVO DEBUG
+        print(f"DEBUG: record_punch_out - Procurando último ponto aberto para {user_id}...")
         cursor.execute("SELECT id, punch_in_time FROM punches WHERE user_id = %s AND punch_out_time IS NULL ORDER BY id DESC LIMIT 1", (user_id,))
         active_punch = cursor.fetchone()
 
         if active_punch:
             punch_id, punch_in_time = active_punch[0], active_punch[1] 
-            print(f"DEBUG: record_punch_out - Ponto aberto encontrado: ID {punch_id}, Entrada {punch_in_time}.") # NOVO DEBUG
+            print(f"DEBUG: record_punch_out - Ponto aberto encontrado: ID {punch_id}, Entrada {punch_in_time}.")
             
             current_time = datetime.now()
             time_diff = current_time - punch_in_time
             
-            print(f"DEBUG: record_punch_out - Atualizando ponto ID {punch_id} com saída {current_time}...") # NOVO DEBUG
+            print(f"DEBUG: record_punch_out - Atualizando ponto ID {punch_id} com saída {current_time}...")
             cursor.execute("UPDATE punches SET punch_out_time = %s WHERE id = %s",
                            (current_time, punch_id))
             conn.commit()
-            print(f"DEBUG: record_punch_out - Saída para ponto ID {punch_id} REGISTRADA e commitada. Duração: {time_diff}.") # NOVO DEBUG
+            print(f"DEBUG: record_punch_out - Saída para ponto ID {punch_id} REGISTRADA e commitada. Duração: {time_diff}.")
             return True, time_diff
         else:
-            print(f"DEBUG: record_punch_out - NENHUM ponto aberto encontrado para {user_id}.") # NOVO DEBUG
+            print(f"DEBUG: record_punch_out - NENHUM ponto aberto encontrado para {user_id}.")
             return False, None
     except Exception as e:
         print(f"ERRO: Falha ao registrar saída de ponto no PostgreSQL para {user_id}: {e}")
@@ -147,7 +147,7 @@ def get_punches_for_period(start_time: datetime, end_time: datetime):
         cursor = conn.cursor()
         
         adjusted_end_time = end_time.replace(hour=23, minute=59, second=59, microsecond=999999)
-        print(f"DEBUG: get_punches_for_period - Buscando pontos de {start_time} a {adjusted_end_time}...") # NOVO DEBUG
+        print(f"DEBUG: get_punches_for_period - Buscando pontos de {start_time} a {adjusted_end_time}...")
 
         cursor.execute("""
             SELECT user_id, username, punch_in_time, punch_out_time
@@ -165,7 +165,7 @@ def get_punches_for_period(start_time: datetime, end_time: datetime):
                 'punch_in_time': row[2].isoformat(),
                 'punch_out_time': row[3].isoformat()
             })
-        print(f"DEBUG: get_punches_for_period - Encontrados {len(results)} pontos.") # NOVO DEBUG
+        print(f"DEBUG: get_punches_for_period - Encontrados {len(results)} pontos.")
         return results
     except Exception as e:
         print(f"ERRO: Falha ao obter pontos para período no PostgreSQL: {e}")
@@ -183,7 +183,7 @@ def get_open_punches_for_auto_close():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        print(f"DEBUG: get_open_punches_for_auto_close - Buscando todos os pontos abertos...") # NOVO DEBUG
+        print(f"DEBUG: get_open_punches_for_auto_close - Buscando todos os pontos abertos...")
         cursor.execute("""
             SELECT id, user_id, username, punch_in_time
             FROM punches
@@ -197,7 +197,7 @@ def get_open_punches_for_auto_close():
                 'username': row[2],
                 'punch_in_time': row[3].isoformat()
             })
-        print(f"DEBUG: get_open_punches_for_auto_close - Encontrados {len(results)} pontos abertos.") # NOVO DEBUG
+        print(f"DEBUG: get_open_punches_for_auto_close - Encontrados {len(results)} pontos abertos.")
         return results
     except Exception as e:
         print(f"ERRO: Falha ao obter pontos abertos no PostgreSQL: {e}")
@@ -214,15 +214,39 @@ def auto_record_punch_out(punch_id: int, auto_punch_out_time: datetime):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        print(f"DEBUG: auto_record_punch_out - Registrando saída automática para ID {punch_id} em {auto_punch_out_time}...") # NOVO DEBUG
+        print(f"DEBUG: auto_record_punch_out - Registrando saída automática para ID {punch_id} em {auto_punch_out_time}...")
         cursor.execute("UPDATE punches SET punch_out_time = %s WHERE id = %s",
                        (auto_punch_out_time, punch_id))
         conn.commit()
-        print(f"DEBUG: auto_record_punch_out - Saída automática para ID {punch_id} REGISTRADA e commitada.") # NOVO DEBUG
+        print(f"DEBUG: auto_record_punch_out - Saída automática para ID {punch_id} REGISTRADA e commitada.")
     except Exception as e:
         print(f"ERRO: Falha ao registrar saída automática de ponto no PostgreSQL para ID {punch_id}: {e}")
         if conn:
             conn.rollback()
+    finally:
+        if conn:
+            conn.close()
+
+# --- NOVIDADE: Função para limpar a tabela de picagem de ponto ---
+def clear_punches_table() -> bool:
+    """
+    Limpa todos os registos da tabela 'punches' no PostgreSQL.
+    Retorna True se a operação for bem-sucedida, False caso contrário.
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        print("DEBUG: clear_punches_table - Tentando limpar todos os registos da tabela 'punches'...")
+        cursor.execute("DELETE FROM punches")
+        conn.commit()
+        print("DEBUG: clear_punches_table - Todos os registos da tabela 'punches' foram limpos com sucesso.")
+        return True
+    except Exception as e:
+        print(f"ERRO: Falha ao limpar a tabela 'punches' no PostgreSQL: {e}")
+        if conn:
+            conn.rollback()
+        return False
     finally:
         if conn:
             conn.close()
@@ -236,7 +260,7 @@ def add_ticket_to_db(channel_id: int, creator_id: int, creator_name: str, catego
         cursor = conn.cursor()
         created_at = datetime.now()
         
-        print(f"DEBUG: add_ticket_to_db - Tentando adicionar ticket para canal {channel_id}...") # NOVO DEBUG
+        print(f"DEBUG: add_ticket_to_db - Tentando adicionar ticket para canal {channel_id}...")
         cursor.execute("INSERT INTO tickets (channel_id, creator_id, creator_name, category, created_at) VALUES (%s, %s, %s, %s, %s) ON CONFLICT (channel_id) DO NOTHING",
                       (channel_id, creator_id, creator_name, category, created_at))
         
@@ -245,7 +269,7 @@ def add_ticket_to_db(channel_id: int, creator_id: int, creator_name: str, catego
             print(f"DEBUG: Ticket {channel_id} (Criador: {creator_name}, Categoria: {category}) adicionado ao DB PostgreSQL.")
             return True
         else:
-            print(f"DEBUG: Erro: Ticket para o canal {channel_id} já existe no DB PostgreSQL (ON CONFLICT).") # NOVO DEBUG
+            print(f"DEBUG: Erro: Ticket para o canal {channel_id} já existe no DB PostgreSQL (ON CONFLICT).")
             return False
     except Exception as e:
         print(f"ERRO: Falha ao adicionar ticket ao DB PostgreSQL para {channel_id}: {e}")
@@ -261,7 +285,7 @@ def remove_ticket_from_db(channel_id: int):
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        print(f"DEBUG: remove_ticket_from_db - Tentando remover ticket para canal {channel_id}...") # NOVO DEBUG
+        print(f"DEBUG: remove_ticket_from_db - Tentando remover ticket para canal {channel_id}...")
         cursor.execute("DELETE FROM tickets WHERE channel_id = %s", (channel_id,))
         conn.commit()
         print(f"DEBUG: Ticket para o canal {channel_id} removido do DB PostgreSQL.")
@@ -278,7 +302,7 @@ def get_all_open_tickets():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        print(f"DEBUG: get_all_open_tickets - Buscando todos os tickets abertos...") # NOVO DEBUG
+        print(f"DEBUG: get_all_open_tickets - Buscando todos os tickets abertos...")
         cursor.execute("SELECT channel_id, creator_id, creator_name, category, created_at FROM tickets")
         tickets_raw = cursor.fetchall()
         
@@ -291,7 +315,7 @@ def get_all_open_tickets():
                 'category': t[3],
                 'created_at': t[4].isoformat()
             })
-        print(f"DEBUG: get_all_open_tickets - Encontrados {len(tickets_formatted)} tickets.") # NOVO DEBUG
+        print(f"DEBUG: get_all_open_tickets - Encontrados {len(tickets_formatted)} tickets.")
         return tickets_formatted
     except Exception as e:
         print(f"ERRO: Falha ao obter tickets abertos do DB PostgreSQL: {e}")
