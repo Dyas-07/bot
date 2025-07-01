@@ -9,13 +9,13 @@
     "Administração": {
       "dropdown_description": "Entrar em contacto diretamente com a Administração.",
       "welcome_embed": {
-        "title": "Bem Vindo ao Suporte do KumaRP",
+        "title": "Bem Vindo ao Suporte da LSPD",
         "description": "O teu ticket foi aberto com sucesso! A equipa de suporte irá analisá-lo e responder assim que possível.\n\n",
         "color": "#36393F",
-        "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png",
+        "thumbnail_url": "https://media.discordapp.net/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png?ex=686540a1&is=6863ef21&hm=a0696447fe5dc4dc23648f246b89966229a1b47ce4a905cc0635be31bd8d4353&=&format=webp&quality=lossless&width=922&height=922",
         "fields": [
           {
-            "name": "Kuma RP | Organizações",
+            "name": "LSPD | Administração",
             "value": " ",
             "inline": false
           },
@@ -35,19 +35,19 @@
             "inline": false
           }
         ],
-        "footer": "Kuma RP - Sistema de Tickets • {data_hora}"
+        "footer": "LSPD - Sistema de Tickets • {data_hora}"
       }
     },
     "Suporte Geral": {
       "dropdown_description": "Para dúvidas e assistência geral.",
       "welcome_embed": {
-        "title": "Bem Vindo ao Suporte do KumaRP",
+        "title": "Bem Vindo ao Suporte da LSPD",
         "description": "O teu ticket foi aberto com sucesso! A equipa de suporte irá analisá-lo e responder assim que possível.\n\n",
         "color": "#36393F",
-        "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png",
+        "thumbnail_url": "https://media.discordapp.net/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png?ex=686540a1&is=6863ef21&hm=a0696447fe5dc4dc23648f246b89966229a1b47ce4a905cc0635be31bd8d4353&=&format=webp&quality=lossless&width=922&height=922",
         "fields": [
           {
-            "name": "Kuma RP | Organizações",
+            "name": "LSPD | Suporte Geral",
             "value": " ",
             "inline": false
           },
@@ -67,19 +67,19 @@
             "inline": false
           }
         ],
-        "footer": "Kuma RP - Sistema de Tickets • {data_hora}"
+        "footer": "LSPD - Sistema de Tickets • {data_hora}"
       }
     },
     "Recursos Humanos": {
       "dropdown_description": "Assuntos de Recursos Humanos.",
       "welcome_embed": {
-        "title": "Bem Vindo ao Suporte do KumaRP",
+        "title": "Bem Vindo ao Suporte da LSPD",
         "description": "O teu ticket foi aberto com sucesso! A equipa de suporte irá analisá-lo e responder assim que possível.\n\n",
         "color": "#36393F",
-        "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png",
+        "thumbnail_url": "https://media.discordapp.net/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png?ex=686540a1&is=6863ef21&hm=a0696447fe5dc4dc23648f246b89966229a1b47ce4a905cc0635be31bd8d4353&=&format=webp&quality=lossless&width=922&height=922",
         "fields": [
           {
-            "name": "Kuma RP | Organizações",
+            "name": "LSPD | Recursos Humanos",
             "value": " ",
             "inline": false
           },
@@ -99,19 +99,19 @@
             "inline": false
           }
         ],
-        "footer": "Kuma RP - Sistema de Tickets • {data_hora}"
+        "footer": "LSPD - Sistema de Tickets • {data_hora}"
       }
     },
     "Eventos": {
       "dropdown_description": "Contactar a equipa de eventos.",
       "welcome_embed": {
-        "title": "Bem Vindo ao Suporte do KumaRP",
+        "title": "Bem Vindo ao Suporte da LSPD",
         "description": "O teu ticket foi aberto com sucesso! A equipa de suporte irá analisá-lo e responder assim que possível.\n\n",
         "color": "#36393F",
-        "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png",
+        "thumbnail_url": "https://media.discordapp.net/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png?ex=686540a1&is=6863ef21&hm=a0696447fe5dc4dc23648f246b89966229a1b47ce4a905cc0635be31bd8d4353&=&format=webp&quality=lossless&width=922&height=922",
         "fields": [
           {
-            "name": "Kuma RP | Organizações",
+            "name": "LSPD | Eventos",
             "value": " ",
             "inline": false
           },
@@ -131,7 +131,7 @@
             "inline": false
           }
         ],
-        "footer": "Kuma RP - Sistema de Tickets • {data_hora}"
+        "footer": "LSPD - Sistema de Tickets • {data_hora}"
       }
     }
   },
@@ -140,7 +140,7 @@
     "description": "Aguarde enquanto um membro da nossa equipe se junta a você para ajudar com o seu ticket na categoria **{categoria}**. Por favor, descreva o seu problema ou questão em detalhes para agilizar o suporte.",
     "color": "#7289DA",
     "footer": "Ticket ID: {id_ticket} | Criado por: {usuario} em {data_hora}",
-    "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png"
+    "thumbnail_url": "https://media.discordapp.net/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png?ex=686540a1&is=6863ef21&hm=a0696447fe5dc4dc23648f246b89966229a1b47ce4a905cc0635be31bd8d4353&=&format=webp&quality=lossless&width=922&height=922"
   },
   "ticket_created_success": "Seu ticket foi criado em {canal_mencao}! Por favor, dirija-se a ele para continuar.",
   "ticket_already_open": "Você já tem um ticket aberto. Por favor, finalize-o ou use-o antes de abrir um novo: {canal_mencao}",
@@ -155,6 +155,6 @@
     "description": "Ticket criado por: **{criador}**\nCategoria: **{categoria}**\n\nEste é o histórico completo da conversa.",
     "color": "#99AAB5",
     "footer": "Transcrito gerado em: {data_hora}",
-    "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png"
+    "thumbnail_url": "https://media.discordapp.net/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png?ex=686540a1&is=6863ef21&hm=a0696447fe5dc4dc23648f246b89966229a1b47ce4a905cc0635be31bd8d4353&=&format=webp&quality=lossless&width=922&height=922"
   }
 }
