@@ -1,34 +1,30 @@
 import discord
-from discord.ext import commands, tasks
-from datetime import datetime, timedelta, timezone
+from discord.ext import commands # Não é mais necessário 'tasks'
+from datetime import datetime, timedelta
 import asyncio
 import os
-import pytz
 
 # Importa funções do nosso módulo database
-from database import record_punch_in, record_punch_out, get_punches_for_overdue_notification # Removido get_open_punches_for_auto_close, auto_record_punch_out
+# Removido get_open_punches_for_auto_close, auto_record_punch_out, get_punches_for_period (se não usado noutro local)
+from database import record_punch_in, record_punch_out
 # Importa configurações do nosso módulo config
-from config import PUNCH_CHANNEL_ID, PUNCH_MESSAGE_FILE, PUNCH_LOGS_CHANNEL_ID, DISPLAY_TIMEZONE, PUNCH_OVERDUE_NOTIFICATION_THRESHOLD_HOURS, PUNCH_OVERDUE_NOTIFICATION_CHECK_INTERVAL_MINUTES
+from config import PUNCH_CHANNEL_ID, PUNCH_MESSAGE_FILE, PUNCH_LOGS_CHANNEL_ID, ROLE_ID
 
-# Carrega o objeto de fuso horário para exibição
-try:
-    DISPLAY_TZ = pytz.timezone(DISPLAY_TIMEZONE)
-except pytz.UnknownTimeZoneError:
-    print(f"ERRO: Fuso horário '{DISPLAY_TIMEZONE}' inválido em config.py. Usando UTC como fallback.")
-    DISPLAY_TZ = pytz.utc
+# As variáveis AUTO_CLOSE_PUNCH_THRESHOLD_HOURS e AUTO_CLOSE_CHECK_INTERVAL_MINUTES foram removidas.
 
 # --- Classe View para os Botões de Picagem de Ponto ---
 class PunchCardView(discord.ui.View):
     def __init__(self, cog_instance):
-        super().__init__(timeout=None)
-        self.cog = cog_instance
+        super().__init__(timeout=None) # timeout=None faz com que a view persista indefinidamente
+        self.cog = cog_instance # Referência para a instância do cog para acessar métodos
 
     @discord.ui.button(label="Entrar em Serviço", style=discord.ButtonStyle.success, emoji="🟢", custom_id="punch_in_button")
     async def punch_in_button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """
+        Callback para o botão 'Entrar em Serviço'.
+        """
         member = interaction.user
-        
-        current_time_display = datetime.now(timezone.utc).astimezone(DISPLAY_TZ)
-        current_time_str = current_time_display.strftime('%d/%m/%Y %H:%M:%S')
+        current_time_str = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
 
         success = record_punch_in(member.id, member.display_name)
         if success:
@@ -46,10 +42,11 @@ class PunchCardView(discord.ui.View):
 
     @discord.ui.button(label="Sair de Serviço", style=discord.ButtonStyle.danger, emoji="🔴", custom_id="punch_out_button")
     async def punch_out_button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
+        """
+        Callback para o botão 'Sair de Serviço'.
+        """
         member = interaction.user
-        
-        current_time_display = datetime.now(timezone.utc).astimezone(DISPLAY_TZ)
-        current_time_str = current_time_display.strftime('%d/%m/%Y %H:%M:%S')
+        current_time_str = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
 
         success, time_diff = record_punch_out(member.id)
         if success:
@@ -75,8 +72,6 @@ class PunchCardCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self._punch_message_id = None
-        # self.auto_close_punches.add_exception_type(Exception) # Removido
-        self.overdue_punch_notifier.add_exception_type(Exception) # NOVO: Adiciona tratamento de exceção para a nova tarefa
 
     async def _load_punch_message_id(self):
         """Carrega o ID da mensagem de picagem de ponto de um arquivo."""
@@ -97,101 +92,44 @@ class PunchCardCog(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         """
-        Quando o bot reconecta, adicionamos a View persistente e iniciamos a tarefa de notificação.
+        Quando o bot reconecta, adicionamos a View persistente.
         """
         print("PunchCardCog está pronto.")
-        await self._load_punch_message_id()
+        await self._load_punch_message_id() # Carrega o ID da mensagem de ponto
 
         if self._punch_message_id:
+            # Tenta buscar a mensagem para garantir que existe antes de adicionar a view
             try:
                 channel = self.bot.get_channel(PUNCH_CHANNEL_ID)
                 if channel:
-                    await channel.fetch_message(self._punch_message_id) 
-                    self.bot.add_view(PunchCardView(self)) 
+                    await channel.fetch_message(self._punch_message_id) # Tenta buscar a mensagem no Discord
+                    self.bot.add_view(PunchCardView(self)) # Adiciona a View para reativar os botões
                     print(f"View de picagem de ponto persistente adicionada para a mensagem ID: {self._punch_message_id}")
                 else:
                     print(f"Aviso: Canal de picagem de ponto (ID: {PUNCH_CHANNEL_ID}) não encontrado para re-associar a View.")
-                    self._punch_message_id = None
+                    self._punch_message_id = None # Reseta para que o !setuppunch possa enviar uma nova mensagem
             except discord.NotFound:
                 print(f"Aviso: Mensagem de picagem de ponto (ID: {self._punch_message_id}) não encontrada, será recriada no próximo setup com !setuppunch.")
-                self._punch_message_id = None
+                self._punch_message_id = None # Reseta para enviar nova mensagem
             except Exception as e:
                 print(f"Erro ao re-associar a View de picagem de ponto: {e}")
-                self._punch_message_id = None
+                self._punch_message_id = None # Reseta em caso de outros erros
 
-        # Inicia a nova tarefa de notificação de ponto atrasado
-        print(f"DEBUG: over_due_punch_notifier - Intervalo configurado: {PUNCH_OVERDUE_NOTIFICATION_CHECK_INTERVAL_MINUTES} minutos.")
-        self.overdue_punch_notifier.start()
-        print("Tarefa de notificação de ponto atrasado iniciada.")
+        # A tarefa de fechamento automático de ponto foi removida.
+        print("Funcionalidade de fechamento automático de ponto removida.")
 
-    # --- NOVIDADE: Tarefa de Notificação de Ponto Atrasado ---
-    @tasks.loop(minutes=PUNCH_OVERDUE_NOTIFICATION_CHECK_INTERVAL_MINUTES)
-    async def overdue_punch_notifier(self):
-        """
-        Verifica periodicamente por pontos abertos que excederam o limite de notificação
-        e envia uma mensagem privada ao utilizador.
-        """
-        print(f"DEBUG: overdue_punch_notifier - INÍCIO DA EXECUÇÃO DO LOOP em {datetime.now(timezone.utc).astimezone(DISPLAY_TZ).strftime('%d/%m/%Y %H:%M:%S')}")
-        
-        try:
-            overdue_punches = get_punches_for_overdue_notification(PUNCH_OVERDUE_NOTIFICATION_THRESHOLD_HOURS)
-            print(f"DEBUG: overdue_punch_notifier - Encontrados {len(overdue_punches)} pontos atrasados para notificação.")
-            
-            for punch in overdue_punches:
-                user_id = punch['user_id']
-                username = punch['username']
-                punch_in_time_str = punch['punch_in_time']
-                punch_in_time_utc = datetime.fromisoformat(punch_in_time_str)
+    # A tarefa auto_close_punches e seu before_loop foram removidos.
 
-                # Calcula o tempo decorrido para a mensagem
-                current_time_utc = datetime.now(timezone.utc)
-                time_elapsed = current_time_utc - punch_in_time_utc
-                
-                total_seconds = int(time_elapsed.total_seconds())
-                hours, remainder = divmod(total_seconds, 3600)
-                minutes, seconds = divmod(remainder, 60)
-                formatted_time_elapsed = f"{hours}h {minutes}m {seconds}s"
-
-                try:
-                    user = self.bot.get_user(user_id) or await self.bot.fetch_user(user_id)
-                    if user:
-                        # Converte a hora de entrada para o fuso horário de exibição para a mensagem privada
-                        punch_in_time_display = punch_in_time_utc.astimezone(DISPLAY_TZ)
-                        
-                        dm_message = (
-                            f"Olá **{username}**,\n\n"
-                            f"Parece que você está em serviço há mais de **{PUNCH_OVERDUE_NOTIFICATION_THRESHOLD_HOURS} horas**!\n"
-                            f"Seu ponto foi registrado em: `{punch_in_time_display.strftime('%d/%m/%Y %H:%M:%S')}`.\n"
-                            f"Tempo decorrido: `{formatted_time_elapsed}`.\n\n"
-                            f"Por favor, certifique-se de picar o seu ponto de saída quando terminar o serviço."
-                        )
-                        await user.send(dm_message)
-                        print(f"DEBUG: Notificação de ponto atrasado enviada para {username} ({user_id}).")
-                    else:
-                        print(f"ERRO: Não foi possível encontrar o utilizador Discord com ID {user_id} para enviar notificação de ponto atrasado.")
-                except discord.Forbidden:
-                    print(f"AVISO: Não foi possível enviar DM para {username} ({user_id}). O utilizador pode ter DMs desativadas ou ter bloqueado o bot.")
-                except Exception as dm_e:
-                    print(f"ERRO: Falha ao enviar DM para {username} ({user_id}) para notificação de ponto atrasado: {dm_e}")
-
-        except Exception as e:
-            print(f"ERRO CRÍTICO na tarefa overdue_punch_notifier: {e}")
-            
-    @overdue_punch_notifier.before_loop
-    async def before_overdue_punch_notifier(self):
-        await self.bot.wait_until_ready()
-        print("DEBUG: Tarefa de notificação de ponto atrasado: bot está pronto, iniciando loop.")
-
-    # --- Comandos Administrativos ---
+    # --- Comandos Administrativos para o sistema de Ponto ---
 
     @commands.command(name="setuppunch", help="Envia a mensagem de picagem de ponto para o canal configurado.")
-    @commands.has_permissions(administrator=True)
+    @commands.has_permissions(administrator=True) # Apenas administradores podem usar
     async def setup_punch_message(self, ctx: commands.Context):
-        await ctx.defer(ephemeral=True)
+        await ctx.defer(ephemeral=True) # Defer para que o bot "pense"
 
         channel = self.bot.get_channel(PUNCH_CHANNEL_ID)
         if not channel:
-            await ctx.send(f"Erro: Canal de picagem de ponto com ID {PUNCH_CHANNEL_ID} não encontrado.", ephemeral=True)
+            await ctx.send(f"Erro: Canal de picagem de ponto com ID {PUNCH_CHANNEL_ID} não encontrado em suas configurações.", ephemeral=True)
             return
 
         embed = discord.Embed(
@@ -210,22 +148,27 @@ class PunchCardCog(commands.Cog):
         view = PunchCardView(self)
 
         try:
-            if self._punch_message_id:
-                message = await channel.fetch_message(self._punch_message_id) 
-                await message.edit(embed=embed, view=view)
+            if self._punch_message_id: # Se já existe um ID de mensagem salvo
+                message = await channel.fetch_message(self._punch_message_id) # Tenta buscar a mensagem existente
+                await message.edit(embed=embed, view=view) # Atualiza a embed e a view
                 await ctx.send("Mensagem de picagem de ponto atualizada com sucesso!", ephemeral=True)
-            else:
+            else: # Se não há ID salvo, envia uma nova mensagem
                 message = await channel.send(embed=embed, view=view)
-                await self._save_punch_message_id(message.id)
+                await self._save_punch_message_id(message.id) # Salva o ID da nova mensagem
                 await ctx.send("Mensagem de picagem de ponto enviada com sucesso!", ephemeral=True)
-        except discord.NotFound:
+        except discord.NotFound: # Se o ID estava salvo mas a mensagem foi deletada
             print("Mensagem de picagem de ponto não encontrada, recriando...")
             message = await channel.send(embed=embed, view=view)
             await self._save_punch_message_id(message.id)
             await ctx.send("Mensagem de picagem de ponto recriada com sucesso!", ephemeral=True)
-        except Exception as e:
+        except Exception as e: # Qualquer outro erro durante o envio/atualização
             await ctx.send(f"Erro ao enviar/atualizar mensagem de picagem de ponto: {e}", ephemeral=True)
             print(f"Erro ao enviar/atualizar mensagem de picagem de ponto: {e}")
 
+# O comando 'relatorio' foi movido para ReportsCog, não está mais aqui.
+
 async def setup(bot):
+    """
+    Função necessária para que o Discord.py possa carregar este cog.
+    """
     await bot.add_cog(PunchCardCog(bot))
