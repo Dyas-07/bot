@@ -1,9 +1,23 @@
 {
   "ticket_panel_embed": {
-    "title": "📋 Abrir um Novo Ticket de Suporte",
-    "description": "Selecione a categoria de suporte que melhor se adequa à sua necessidade. Nossa equipe irá ajudá-lo o mais rápido possível.",
-    "color": "#FEE75C",
-    "footer": "Clique na categoria para abrir um ticket."
+    "title": "Sistema de Tickets - LSPD | KUMA RP",
+    "description": "Bem-vindo ao sistema de tickets da LSPD!\nSeleciona abaixo a categoria que mais se adequa ao teu pedido. Cada opção serve para um tipo específico de situação, seja ela administrativa, recursos humanos ou recrutamento.",
+    "color": "#36393F",
+    "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png",
+    "fields": [
+      {
+        "name": "📌 Usa este sistema apenas quando necessário.",
+        "value": "Traz sempre o máximo de informação e provas (se aplicável) para facilitar o atendimento.",
+        "inline": false
+      },
+      {
+        "name": "⏰ Os tickets são respondidos por ordem de chegada.\n👇 Escolhe uma categoria no menu dropdown abaixo:",
+        "value": " ",
+        "inline": false
+      }
+    ],
+    "footer": "LSPD - Sistema de Tickets • {data_hora}",
+    "dropdown_placeholder": "Make a selection"
   },
   "categories": {
     "Administração": {
