@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
-from typing import Union # Importa Union do módulo typing
+from discord import app_commands # Importa app_commands para slash commands
+from typing import Union # Mantém Union para type hinting de Member/Role
 import json
 import os
 from datetime import datetime, timezone
@@ -492,66 +493,60 @@ class TicketCog(commands.Cog):
             await ctx.send(f"Erro ao enviar/atualizar painel de tickets: {e}", ephemeral=True)
             print(f"Erro ao enviar/atualizar painel de tickets: {e}")
 
-    # --- Comandos de Prefixo para Tickets ---
+    # --- Comandos de Barra para Tickets ---
 
-    @commands.command(name="add", help="Adiciona um usuário ou cargo ao ticket atual. Uso: !add <@usuário ou @cargo>")
-    @commands.has_role(TICKET_MODERATOR_ROLE_ID) # Apenas moderadores de tickets podem usar
-    async def add_to_ticket(self, ctx: commands.Context, member_or_role: Union[discord.Member, discord.Role]): # Corrigido para typing.Union
+    @app_commands.command(name="add", description="Adiciona um usuário ou cargo ao ticket atual.")
+    @app_commands.describe(membro_ou_cargo="O usuário ou cargo a ser adicionado.")
+    @app_commands.checks.has_role(TICKET_MODERATOR_ROLE_ID) # Apenas moderadores de tickets podem usar
+    async def add_to_ticket(self, interaction: discord.Interaction, membro_ou_cargo: Union[discord.Member, discord.Role]):
         """
         Adiciona um usuário ou cargo ao canal do ticket atual.
         """
-        if not isinstance(ctx.channel, discord.TextChannel):
-            await ctx.send("Este comando só pode ser usado em um canal de texto.", ephemeral=True)
-            return
-
-        # Verifica se o canal é um canal de ticket (pode ser melhorado com uma verificação de DB se necessário)
-        # Por enquanto, assumimos que se o comando for usado, é para um ticket.
-        
-        try:
-            # Concede permissões de visualização e envio de mensagens
-            await ctx.channel.set_permissions(member_or_role, view_channel=True, send_messages=True, attach_files=True)
-            await ctx.send(f"✅ {member_or_role.mention} foi adicionado(a) a este ticket.", ephemeral=True)
-            print(f"{ctx.author.display_name} adicionou {member_or_role.name} ao ticket {ctx.channel.name}")
-        except discord.Forbidden:
-            await ctx.send("❌ Não tenho permissão para gerenciar permissões neste canal. Verifique minhas permissões.", ephemeral=True)
-        except Exception as e:
-            await ctx.send(f"❌ Ocorreu um erro ao adicionar {member_or_role.name}: {e}", ephemeral=True)
-            print(f"Erro ao adicionar membro/cargo ao ticket: {e}")
-
-    @add_to_ticket.error
-    async def add_to_ticket_error(self, ctx: commands.Context, error: commands.CommandError):
-        if isinstance(error, commands.MissingRole):
-            await ctx.send(f"🚫 Você não tem o cargo necessário para usar este comando. Requer o cargo com ID {TICKET_MODERATOR_ROLE_ID}.", ephemeral=True)
-        elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send("Uso correto: `!add <@usuário ou @cargo>`", ephemeral=True)
-        elif isinstance(error, commands.BadUnionArgument):
-            await ctx.send("Argumento inválido. Por favor, mencione um usuário ou cargo válido.", ephemeral=True)
-        else:
-            await ctx.send(f"Ocorreu um erro inesperado: {error}", ephemeral=True)
-            print(f"Erro no comando !add: {error}")
-
-
-    @commands.command(name="rename", help="Muda o nome do canal do ticket atual. Uso: !rename <novo_nome>")
-    @commands.has_role(TICKET_MODERATOR_ROLE_ID) # Apenas moderadores de tickets podem usar
-    async def rename_ticket(self, ctx: commands.Context, *, novo_nome: str):
-        """
-        Muda o nome do canal do ticket atual.
-        """
-        if not isinstance(ctx.channel, discord.TextChannel):
-            await ctx.send("Este comando só pode ser usado em um canal de texto.", ephemeral=True)
+        if not isinstance(interaction.channel, discord.TextChannel):
+            await interaction.response.send_message("Este comando só pode ser usado em um canal de texto.", ephemeral=True)
             return
 
         # Verifica se o canal é um canal de ticket
         open_tickets = get_all_open_tickets()
-        is_ticket_channel = any(ticket['channel_id'] == ctx.channel.id for ticket in open_tickets)
+        is_ticket_channel = any(ticket['channel_id'] == interaction.channel.id for ticket in open_tickets)
 
         if not is_ticket_channel:
-            await ctx.send("Este comando só pode ser usado em um canal de ticket.", ephemeral=True)
+            await interaction.response.send_message("Este comando só pode ser usado em um canal de ticket.", ephemeral=True)
+            return
+        
+        try:
+            # Concede permissões de visualização e envio de mensagens
+            await interaction.channel.set_permissions(membro_ou_cargo, view_channel=True, send_messages=True, attach_files=True)
+            await interaction.response.send_message(f"✅ {membro_ou_cargo.mention} foi adicionado(a) a este ticket.", ephemeral=True)
+            print(f"{interaction.user.display_name} adicionou {membro_ou_cargo.name} ao ticket {interaction.channel.name}")
+        except discord.Forbidden:
+            await interaction.response.send_message("❌ Não tenho permissão para gerenciar permissões neste canal. Verifique minhas permissões.", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Ocorreu um erro ao adicionar {membro_ou_cargo.name}: {e}", ephemeral=True)
+            print(f"Erro ao adicionar membro/cargo ao ticket: {e}")
+
+    @app_commands.command(name="rename", description="Muda o nome do canal do ticket atual.")
+    @app_commands.describe(novo_nome="O novo nome para o canal do ticket.")
+    @app_commands.checks.has_role(TICKET_MODERATOR_ROLE_ID) # Apenas moderadores de tickets podem usar
+    async def rename_ticket(self, interaction: discord.Interaction, novo_nome: str):
+        """
+        Muda o nome do canal do ticket atual.
+        """
+        if not isinstance(interaction.channel, discord.TextChannel):
+            await interaction.response.send_message("Este comando só pode ser usado em um canal de texto.", ephemeral=True)
+            return
+
+        # Verifica se o canal é um canal de ticket
+        open_tickets = get_all_open_tickets()
+        is_ticket_channel = any(ticket['channel_id'] == interaction.channel.id for ticket in open_tickets)
+
+        if not is_ticket_channel:
+            await interaction.response.send_message("Este comando só pode ser usado em um canal de ticket.", ephemeral=True)
             return
 
         # Limita o comprimento do nome do canal para evitar erros do Discord
         if len(novo_nome) > 100:
-            await ctx.send("O nome do canal não pode ter mais de 100 caracteres.", ephemeral=True)
+            await interaction.response.send_message("O nome do canal não pode ter mais de 100 caracteres.", ephemeral=True)
             return
 
         # Formata o nome para ser amigável ao Discord (minúsculas, sem espaços, etc.)
@@ -560,25 +555,15 @@ class TicketCog(commands.Cog):
         formatted_name = ''.join(c for c in formatted_name if c.isalnum() or c == '-')
 
         try:
-            old_name = ctx.channel.name
-            await ctx.channel.edit(name=formatted_name)
-            await ctx.send(f"✅ Nome do ticket alterado de `{old_name}` para `{formatted_name}`.", ephemeral=True)
-            print(f"{ctx.author.display_name} renomeou o ticket de {old_name} para {formatted_name}")
+            old_name = interaction.channel.name
+            await interaction.channel.edit(name=formatted_name)
+            await interaction.response.send_message(f"✅ Nome do ticket alterado de `{old_name}` para `{formatted_name}`.", ephemeral=True)
+            print(f"{interaction.user.display_name} renomeou o ticket de {old_name} para {formatted_name}")
         except discord.Forbidden:
-            await ctx.send("❌ Não tenho permissão para gerenciar canais. Verifique minhas permissões.", ephemeral=True)
+            await interaction.response.send_message("❌ Não tenho permissão para gerenciar canais. Verifique minhas permissões.", ephemeral=True)
         except Exception as e:
-            await ctx.send(f"❌ Ocorreu um erro ao renomear o ticket: {e}", ephemeral=True)
+            await interaction.response.send_message(f"❌ Ocorreu um erro ao renomear o ticket: {e}", ephemeral=True)
             print(f"Erro ao renomear ticket: {e}")
-
-    @rename_ticket.error
-    async def rename_ticket_error(self, ctx: commands.Context, error: commands.CommandError):
-        if isinstance(error, commands.MissingRole):
-            await ctx.send(f"🚫 Você não tem o cargo necessário para usar este comando. Requer o cargo com ID {TICKET_MODERATOR_ROLE_ID}.", ephemeral=True)
-        elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send("Uso correto: `!rename <novo_nome>`", ephemeral=True)
-        else:
-            await ctx.send(f"Ocorreu um erro inesperado: {error}", ephemeral=True)
-            print(f"Erro no comando !rename: {error}")
 
 
 class TicketPanelView(discord.ui.View):
