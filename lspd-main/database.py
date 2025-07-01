@@ -200,41 +200,6 @@ def clear_punches_table() -> bool:
         if conn:
             conn.close()
 
-# --- Função para obter pontos abertos para notificação de atraso ---
-def get_punches_for_overdue_notification(threshold_hours: int):
-    """
-    Retorna registos de ponto abertos que excederam um determinado limite de horas,
-    para fins de notificação.
-    """
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        print(f"DEBUG: get_punches_for_overdue_notification - Buscando pontos abertos com mais de {threshold_hours} horas...")
-        cursor.execute("""
-            SELECT user_id, username, punch_in_time
-            FROM punches
-            WHERE punch_out_time IS NULL
-            AND EXTRACT(EPOCH FROM (NOW() AT TIME ZONE 'UTC' - punch_in_time)) / 3600.0 >= %s
-        """, (threshold_hours,))
-
-        results = []
-        for row in cursor.fetchall():
-            results.append({
-                'user_id': row[0],
-                'username': row[1],
-                'punch_in_time': row[2].isoformat()
-            })
-        print(f"DEBUG: get_punches_for_overdue_notification - Encontrados {len(results)} pontos para notificação.")
-        return results
-    except Exception as e:
-        print(f"ERRO: Falha ao obter pontos para notificação de atraso no PostgreSQL: {e}")
-        return []
-    finally:
-        if conn:
-            conn.close()
-
 # --- Funções para o banco de dados de tickets (adaptadas para PostgreSQL) ---
 
 def add_ticket_to_db(channel_id: int, creator_id: int, creator_name: str, category: str):
