@@ -41,7 +41,7 @@ async def hello(ctx):
         print(log_message("WARNING", f"Comando !mascote negado para {ctx.author.display_name} ({ctx.author.id}): sem cargo necessário"))
     else:
         await ctx.send("A atual mascote da LSPD é o SKIBIDI ZEKA!")
-        print(log_message("INFO", f"Comando !mascote executado por {ctx.author.display_name} ({ctx.author.id})"))
+        print(log_message("INFO", f"Comando !mascote executado por {ctx.author.display_name} ({ctx.author.id})", "🐶"))
 
 # --- COMANDO: !clear ---
 @bot.command(name="clear", help="Limpa um número especificado de mensagens no canal. Uso: !clear <quantidade>")
