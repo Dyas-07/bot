@@ -565,6 +565,56 @@ class TicketCog(commands.Cog):
             await interaction.response.send_message(f"❌ Ocorreu um erro ao renomear o ticket: {e}", ephemeral=True)
             print(f"Erro ao renomear ticket: {e}")
 
+    @app_commands.command(name="cleartickets", description="Limpa todos os canais de ticket abertos e seus registos na base de dados.")
+    @app_commands.checks.has_permissions(administrator=True) # Apenas administradores podem usar
+    async def clear_all_tickets(self, interaction: discord.Interaction):
+        """
+        Limpa todos os canais de ticket abertos no Discord e remove os seus registos da base de dados.
+        """
+        if not interaction.guild:
+            await interaction.response.send_message("Este comando só pode ser usado num servidor.", ephemeral=True)
+            return
+
+        await interaction.response.defer(ephemeral=True) # Defer para que o bot "pense"
+
+        open_tickets = get_all_open_tickets()
+        deleted_count = 0
+        failed_count = 0
+
+        if not open_tickets:
+            await interaction.followup.send("Não há tickets abertos para limpar.", ephemeral=True)
+            return
+
+        for ticket in open_tickets:
+            channel_id = ticket['channel_id']
+            try:
+                channel = self.bot.get_channel(channel_id)
+                if channel:
+                    await channel.delete(reason="Comando /cleartickets executado.")
+                    print(f"Canal de ticket {channel.name} ({channel_id}) deletado.")
+                    deleted_count += 1
+                else:
+                    print(f"Aviso: Canal de ticket {channel_id} não encontrado no Discord, mas presente no DB. Será removido do DB.")
+                
+                # Sempre remove do DB, mesmo que o canal não tenha sido encontrado no Discord
+                remove_ticket_from_db(channel_id)
+
+            except discord.Forbidden:
+                print(f"Erro de permissão: Não foi possível deletar o canal de ticket {channel_id}.")
+                failed_count += 1
+            except Exception as e:
+                print(f"Erro ao deletar canal de ticket {channel_id}: {e}")
+                failed_count += 1
+        
+        if deleted_count > 0:
+            await interaction.followup.send(f"✅ Foram limpos {deleted_count} canais de ticket e os seus registos na base de dados.", ephemeral=True)
+        if failed_count > 0:
+            await interaction.followup.send(f"⚠️ Falha ao limpar {failed_count} canais de ticket devido a erros de permissão ou outros.", ephemeral=True)
+        if deleted_count == 0 and failed_count == 0:
+            await interaction.followup.send("Nenhum ticket foi encontrado para limpeza.", ephemeral=True)
+
+        print(f"Comando /cleartickets executado por {interaction.user.display_name}. Limpos: {deleted_count}, Falhas: {failed_count}.")
+
 
 class TicketPanelView(discord.ui.View):
     def __init__(self, cog_instance):
