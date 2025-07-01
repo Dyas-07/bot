@@ -1,25 +1,17 @@
 import discord
-from discord.ext import commands, tasks # Importa tasks para loops assíncronos
-from datetime import datetime, timedelta
-import asyncio
+from discord.ext import commands
 import os
 
-# Importa funções do nosso módulo database
-# Removido get_punches_for_period, pois o comando de relatório foi movido para ReportsCog
-from database import record_punch_in, record_punch_out, get_open_punches_for_auto_close, auto_record_punch_out
-# Importa configurações do nosso módulo config
-from config import PUNCH_CHANNEL_ID, PUNCH_MESSAGE_FILE, PUNCH_LOGS_CHANNEL_ID, ROLE_ID # ROLE_ID ainda pode ser usado se houver outras permissões
-
-# Tempo limite para fechamento automático de ponto (em horas)
-AUTO_CLOSE_PUNCH_THRESHOLD_HOURS = 3
-# Intervalo em que o bot verifica pontos abertos (em minutos)
-AUTO_CLOSE_CHECK_INTERVAL_MINUTES = 5
+# Importa funções do módulo database
+from database import record_punch_in, record_punch_out
+# Importa configurações do módulo config
+from config import PUNCH_CHANNEL_ID, PUNCH_MESSAGE_FILE, PUNCH_LOGS_CHANNEL_ID, ROLE_ID
 
 # --- Classe View para os Botões de Picagem de Ponto ---
 class PunchCardView(discord.ui.View):
     def __init__(self, cog_instance):
-        super().__init__(timeout=None) # timeout=None faz com que a view persista indefinidamente
-        self.cog = cog_instance # Referência para a instância do cog para acessar métodos
+        super().__init__(timeout=None)  # timeout=None faz com que a view persista indefinidamente
+        self.cog = cog_instance  # Referência para a instância do cog para acessar métodos
 
     @discord.ui.button(label="Entrar em Serviço", style=discord.ButtonStyle.success, emoji="🟢", custom_id="punch_in_button")
     async def punch_in_button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -96,10 +88,10 @@ class PunchCardCog(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         """
-        Quando o bot reconecta, adicionamos a View persistente e iniciamos a tarefa de fechamento automático.
+        Quando o bot reconecta, adicionamos a View persistente.
         """
         print("PunchCardCog está pronto.")
-        await self._load_punch_message_id() # Carrega o ID da mensagem de ponto
+        await self._load_punch_message_id()  # Carrega o ID da mensagem de ponto
 
         if self._punch_message_id:
             # Tenta buscar a mensagem para garantir que existe antes de adicionar a view
@@ -111,72 +103,18 @@ class PunchCardCog(commands.Cog):
                     print(f"View de picagem de ponto persistente adicionada para a mensagem ID: {self._punch_message_id}")
                 else:
                     print(f"Aviso: Canal de picagem de ponto (ID: {PUNCH_CHANNEL_ID}) não encontrado para re-associar a View.")
-                    self._punch_message_id = None # Reseta para enviar nova mensagem
+                    self._punch_message_id = None  # Reseta para enviar nova mensagem
             except discord.NotFound:
                 print(f"Aviso: Mensagem de picagem de ponto (ID: {self._punch_message_id}) não encontrada, será recriada no próximo setup.")
-                self._punch_message_id = None # Reseta para enviar nova mensagem
+                self._punch_message_id = None  # Reseta para enviar nova mensagem
             except Exception as e:
                 print(f"Erro ao re-associar a View de picagem de ponto: {e}")
-                self._punch_message_id = None # Reseta em caso de outros erros
-
-        # Inicia a tarefa de fechamento automático de ponto
-        self.auto_close_punches.start()
-        print("Tarefa de fechamento automático de ponto iniciada.")
-
-    # --- Tarefa de Fechamento Automático de Ponto ---
-    @tasks.loop(minutes=AUTO_CLOSE_CHECK_INTERVAL_MINUTES)
-    async def auto_close_punches(self):
-        """
-        Verifica periodicamente por pontos abertos que excederam o limite de tempo
-        e os fecha automaticamente.
-        """
-        # print(f"Verificando pontos abertos para fechamento automático... ({datetime.now().strftime('%H:%M:%S')})") # Descomente para debug
-        open_punches = get_open_punches_for_auto_close()
-        current_time = datetime.now()
-        
-        for punch in open_punches:
-            punch_id = punch['id']
-            user_id = punch['user_id']
-            username = punch['username']
-            punch_in_time_str = punch['punch_in_time']
-            punch_in_time = datetime.fromisoformat(punch_in_time_str)
-
-            time_elapsed = current_time - punch_in_time
-            
-            # Converte o limite de horas para timedelta
-            threshold = timedelta(hours=AUTO_CLOSE_PUNCH_THRESHOLD_HOURS)
-
-            if time_elapsed >= threshold:
-                auto_punch_out_time = current_time
-                auto_record_punch_out(punch_id, auto_punch_out_time)
-
-                total_seconds = int(time_elapsed.total_seconds())
-                hours, remainder = divmod(total_seconds, 3600)
-                minutes, seconds = divmod(remainder, 60)
-                formatted_time_elapsed = f"{hours}h {minutes}m {seconds}s"
-                
-                logs_channel = self.bot.get_channel(PUNCH_LOGS_CHANNEL_ID)
-                if logs_channel:
-                    log_message = (
-                        f"🟡 **{username}** (`{user_id}`) teve o ponto fechado automaticamente "
-                        f"por estar aberto por mais de {AUTO_CLOSE_PUNCH_THRESHOLD_HOURS} horas.\n"
-                        f"Entrada: `{punch_in_time.strftime('%d/%m/%Y %H:%M:%S')}` | Saída Automática: `{auto_punch_out_time.strftime('%d/%m/%Y %H:%M:%S')}` | Duração: `{formatted_time_elapsed}`."
-                    )
-                    await logs_channel.send(log_message)
-                    print(f"Ponto de {username} (ID: {user_id}) fechado automaticamente.")
-                else:
-                    print(f"Erro: Canal de logs com ID {PUNCH_LOGS_CHANNEL_ID} não encontrado para registrar fechamento automático.")
-            
-    @auto_close_punches.before_loop
-    async def before_auto_close_punches(self):
-        await self.bot.wait_until_ready() # Espera o bot estar pronto antes de iniciar o loop
-
-    # --- Comandos Administrativos (deixei apenas setuppunch aqui) ---
+                self._punch_message_id = None  # Reseta em caso de outros erros
 
     @commands.command(name="setuppunch", help="Envia a mensagem de picagem de ponto para o canal configurado.")
     @commands.has_permissions(administrator=True)
     async def setup_punch_message(self, ctx: commands.Context):
-        await ctx.defer(ephemeral=True) # Defer para que o bot "pense"
+        await ctx.defer(ephemeral=True)  # Defer para que o bot "pense"
 
         channel = self.bot.get_channel(PUNCH_CHANNEL_ID)
         if not channel:
@@ -215,8 +153,6 @@ class PunchCardCog(commands.Cog):
         except Exception as e:
             await ctx.send(f"Erro ao enviar/atualizar mensagem de picagem de ponto: {e}", ephemeral=True)
             print(f"Erro ao enviar/atualizar mensagem de picagem de ponto: {e}")
-
-# O comando 'relatorio' foi movido para ReportsCog
 
 async def setup(bot):
     """
