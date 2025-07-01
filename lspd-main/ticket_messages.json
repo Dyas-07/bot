@@ -47,7 +47,7 @@
         "thumbnail_url": "https://media.discordapp.net/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png?ex=686540a1&is=6863ef21&hm=a0696447fe5dc4dc23648f246b89966229a1b47ce4a905cc0635be31bd8d4353&=&format=webp&quality=lossless&width=922&height=922",
         "fields": [
           {
-            "name": "LSPD | Suporte Geral",
+            "name": "LSPD | Recrutamentos",
             "value": " ",
             "inline": false
           },
@@ -62,7 +62,7 @@
             "inline": false
           },
           {
-            "name": "Instruções Específicas para Suporte Geral:",
+            "name": "Instruções Específicas para Recrutamentos:",
             "value": "Por favor, **descreva a sua dúvida ou problema detalhadamente**. Nossa equipe está aqui para ajudar e responderá em breve.",
             "inline": false
           }
