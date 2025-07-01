@@ -14,17 +14,21 @@ from config import (
 )
 from database import add_ticket_to_db, remove_ticket_from_db, get_all_open_tickets
 
-# Carrega as mensagens do arquivo JSON
+# Variável global para armazenar as mensagens customizadas para tickets
+TICKET_MESSAGES = {}
+
+# Função para carregar as mensagens customizadas do arquivo JSON
 def load_ticket_messages():
     global TICKET_MESSAGES
     try:
+        # Tenta carregar o ficheiro JSON
         with open(TICKET_MESSAGES_FILE, 'r', encoding='utf-8') as f:
             TICKET_MESSAGES = json.load(f)
         print(f"Mensagens de ticket carregadas de {TICKET_MESSAGES_FILE}")
     except FileNotFoundError:
         print(f"Erro: Arquivo de mensagens de ticket '{TICKET_MESSAGES_FILE}' não encontrado.")
         print("Será usada uma estrutura de mensagens padrão. Por favor, crie este arquivo ou verifique o caminho.")
-        # Estrutura padrão para evitar erros, mas que deve ser substituída pelo arquivo real
+        # Se o ficheiro não for encontrado, usa uma estrutura padrão para evitar KeyErrors
         TICKET_MESSAGES = {
             "ticket_panel_embed": {
                 "title": "Sistema de Tickets - LSPD | KUMA RP",
@@ -81,8 +85,8 @@ def load_ticket_messages():
                         "fields": [
                             {"name": "Kuma RP | Organizações", "value": " ", "inline": False},
                             {"name": "Enquanto aguardas:", "value": "🔸 Certifica-te de que forneceste todas as informações necessárias.\n🔸 Evita enviar mensagens desnecessárias para não atrasar a resposta.\n🔸 Mantém o respeito e aguarda pacientemente.", "inline": False},
-                            {"name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.", "value": " ", "inline": False},
-                            {"name": "Instruções Específicas para Recursos Humanos:", "value": "Por favor, **explique a sua questão ou o motivo do seu contato com a equipe de RH**. Seja o mais claro possível para que possamos encaminhá-lo para a pessoa certa.", "inline": False}
+                            {"name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.", "value": " ", "inline": false},
+                            {"name": "Instruções Específicas para Recursos Humanos:", "value": "Por favor, **explique a sua questão ou o motivo do seu contato com a equipe de RH**. Seja o mais claro possível para que possamos encaminhá-lo para a pessoa certa.", "inline": false}
                         ],
                         "footer": "Kuma RP - Sistema de Tickets • {data_hora}"
                     }
@@ -97,8 +101,8 @@ def load_ticket_messages():
                         "fields": [
                             {"name": "Kuma RP | Organizações", "value": " ", "inline": False},
                             {"name": "Enquanto aguardas:", "value": "🔸 Certifica-te de que forneceste todas as informações necessárias.\n🔸 Evita enviar mensagens desnecessárias para não atrasar a resposta.\n🔸 Mantém o respeito e aguarda pacientemente.", "inline": False},
-                            {"name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.", "value": " ", "inline": False},
-                            {"name": "Instruções Específicas para Eventos:", "value": "Por favor, **descreva a sua ideia ou questão relacionada a eventos**. Nossa equipe de eventos irá analisar e responder em breve.", "inline": False}
+                            {"name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.", "value": " ", "inline": false},
+                            {"name": "Instruções Específicas para Eventos:", "value": "Por favor, **descreva a sua ideia ou questão relacionada a eventos**. Nossa equipe de eventos irá analisar e responder em breve.", "inline": false}
                         ],
                         "footer": "Kuma RP - Sistema de Tickets • {data_hora}"
                     }
@@ -165,7 +169,8 @@ class TicketCategorySelect(discord.ui.Select):
                 print(f"Aviso: Categoria '{label}' sem ID de categoria configurado. Será ignorada no dropdown.")
 
         super().__init__(
-            placeholder=TICKET_MESSAGES.get("ticket_panel_embed", {}).get("description", "Selecione uma categoria de ticket...")[:100],
+            # CORREÇÃO: Usar o placeholder correto do JSON para o dropdown
+            placeholder=TICKET_MESSAGES.get("ticket_panel_embed", {}).get("dropdown_placeholder", "Selecione uma categoria..."),
             min_values=1,
             max_values=1,
             options=options,
@@ -381,7 +386,7 @@ class TicketsCog(commands.Cog):
     async def _load_ticket_panel_message_id(self):
         """Carrega o ID da mensagem do painel de tickets de um arquivo."""
         try:
-            with open(TICKET_PANEL_MESSAGE_FILE, 'r') as f:
+            with open(TICKET_PANEL_MESSAGE_FILE, 'r', encoding='utf-8') as f:
                 self._ticket_panel_message_id = int(f.read().strip())
         except (FileNotFoundError, ValueError):
             self._ticket_panel_message_id = None
@@ -390,7 +395,7 @@ class TicketsCog(commands.Cog):
     async def _save_ticket_panel_message_id(self, message_id: int):
         """Salva o ID da mensagem do painel de tickets em um arquivo."""
         self._ticket_panel_message_id = message_id
-        with open(TICKET_PANEL_MESSAGE_FILE, 'w') as f:
+        with open(TICKET_PANEL_MESSAGE_FILE, 'w', encoding='utf-8') as f:
             f.write(str(message_id))
         print(f"ID da mensagem do painel de tickets salvo: {self._ticket_panel_message_id}")
 
@@ -488,6 +493,14 @@ class TicketsCog(commands.Cog):
             description=panel_embed_data.get("description", "Descrição Padrão do Painel"),
             color=discord.Color.from_str(panel_embed_data.get("color", "#FFD700")) # Usando hexadecimal como fallback
         )
+        # Adiciona campos (fields) da configuração JSON para o painel
+        if 'fields' in panel_embed_data and isinstance(panel_embed_data['fields'], list):
+            for field in panel_embed_data['fields']:
+                name = field.get('name', ' ')
+                value = field.get('value', ' ')
+                inline = field.get('inline', False)
+                embed.add_field(name=name, value=value, inline=inline)
+        
         embed.set_footer(text=panel_embed_data.get("footer", "Rodapé Padrão do Painel"))
 
         view = TicketPanelView(self)
@@ -504,7 +517,8 @@ class TicketsCog(commands.Cog):
         except discord.NotFound: # Se o ID estava salvo mas a mensagem foi deletada
             print("Mensagem do painel de tickets não encontrada, recriando...")
             message = await channel.send(embed=embed, view=view)
-            await self._save_ticket_panel_message_id(message.id)
+            # CORREÇÃO: Usar _save_ticket_panel_message_id aqui
+            await self._save_ticket_panel_message_id(message.id) 
             await ctx.send("Painel de tickets recriado com sucesso!", ephemeral=True)
         except Exception as e: # Qualquer outro erro durante o envio/atualização
             await ctx.send(f"Erro ao enviar/atualizar painel de tickets: {e}", ephemeral=True)
@@ -578,9 +592,79 @@ class TicketsCog(commands.Cog):
             if os.path.exists(file_path):
                 os.remove(file_path)
 
+    @app_commands.command(name="add", description="Adiciona um usuário ou cargo ao ticket atual.")
+    @app_commands.describe(membro_ou_cargo="O usuário ou cargo a ser adicionado.")
+    @app_commands.checks.has_role(TICKET_MODERATOR_ROLE_ID) # Apenas moderadores de tickets podem usar
+    async def add_to_ticket(self, interaction: discord.Interaction, membro_ou_cargo: Union[discord.Member, discord.Role]):
+        """
+        Adiciona um usuário ou cargo ao canal do ticket atual.
+        """
+        if not isinstance(interaction.channel, discord.TextChannel):
+            await interaction.response.send_message("Este comando só pode ser usado em um canal de texto.", ephemeral=True)
+            return
+
+        # Verifica se o canal é um canal de ticket
+        open_tickets = get_all_open_tickets()
+        is_ticket_channel = any(ticket['channel_id'] == interaction.channel.id for ticket in open_tickets)
+
+        if not is_ticket_channel:
+            await interaction.response.send_message("Este comando só pode ser usado em um canal de ticket.", ephemeral=True)
+            return
+        
+        try:
+            # Concede permissões de visualização e envio de mensagens
+            await interaction.channel.set_permissions(membro_ou_cargo, view_channel=True, send_messages=True, attach_files=True)
+            await interaction.response.send_message(f"✅ {membro_ou_cargo.mention} foi adicionado(a) a este ticket.", ephemeral=True)
+            print(f"{interaction.user.display_name} adicionou {membro_ou_cargo.name} ao ticket {interaction.channel.name}")
+        except discord.Forbidden:
+            await interaction.response.send_message("❌ Não tenho permissão para gerenciar permissões neste canal. Verifique minhas permissões.", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Ocorreu um erro ao adicionar {membro_ou_cargo.name}: {e}", ephemeral=True)
+            print(f"Erro ao adicionar membro/cargo ao ticket: {e}")
+
+    @app_commands.command(name="rename", description="Muda o nome do canal do ticket atual.")
+    @app_commands.describe(novo_nome="O novo nome para o canal do ticket.")
+    @app_commands.checks.has_role(TICKET_MODERATOR_ROLE_ID) # Apenas moderadores de tickets podem usar
+    async def rename_ticket(self, interaction: discord.Interaction, novo_nome: str):
+        """
+        Muda o nome do canal do ticket atual.
+        """
+        if not isinstance(interaction.channel, discord.TextChannel):
+            await interaction.response.send_message("Este comando só pode ser usado em um canal de texto.", ephemeral=True)
+            return
+
+        # Verifica se o canal é um canal de ticket
+        open_tickets = get_all_open_tickets()
+        is_ticket_channel = any(ticket['channel_id'] == interaction.channel.id for ticket in open_tickets)
+
+        if not is_ticket_channel:
+            await interaction.response.send_message("Este comando só pode ser usado em um canal de ticket.", ephemeral=True)
+            return
+
+        # Limita o comprimento do nome do canal para evitar erros do Discord
+        if len(novo_nome) > 100:
+            await interaction.response.send_message("O nome do canal não pode ter mais de 100 caracteres.", ephemeral=True)
+            return
+
+        # Formata o nome para ser amigável ao Discord (minúsculas, sem espaços, etc.)
+        formatted_name = novo_nome.lower().replace(' ', '-')
+        # Remove caracteres especiais que o Discord não permite em nomes de canal
+        formatted_name = ''.join(c for c in formatted_name if c.isalnum() or c == '-')
+
+        try:
+            old_name = interaction.channel.name
+            await interaction.channel.edit(name=formatted_name)
+            await interaction.response.send_message(f"✅ Nome do ticket alterado de `{old_name}` para `{formatted_name}`.", ephemeral=True)
+            print(f"{interaction.user.display_name} renomeou o ticket de {old_name} para {formatted_name}")
+        except discord.Forbidden:
+            await interaction.response.send_message("❌ Não tenho permissão para gerenciar canais. Verifique minhas permissões.", ephemeral=True)
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Ocorreu um erro ao renomear o ticket: {e}", ephemeral=True)
+            print(f"Erro ao renomear ticket: {e}")
+
     @commands.command(name="cleartickets", help="Deleta todos os canais de ticket abertos e remove-os do DB.")
     @commands.has_permissions(administrator=True) # Apenas administradores podem usar
-    async def clear_all_tickets(self, ctx: commands.Context):
+    async def clear_all_tickets_prefix(self, ctx: commands.Context): # Renomeado para evitar conflito com slash command se existisse
         """
         Deleta todos os canais de ticket atualmente abertos e os remove do banco de dados.
         Útil para limpar tickets de teste.
