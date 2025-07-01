@@ -1,62 +1,68 @@
 {
   "ticket_panel_embed": {
-    "title": "Suporte LSPD - Sistema de Tickets",
-    "description": "Para criar um novo ticket, selecione a categoria desejada no menu abaixo.\nPor favor, seja o mais descritivo possível ao criar seu ticket.",
-    "color": "#FFD700",
-    "footer": "Aguarde um membro da equipe entrar em contato."
+    "title": "📋 Abrir um Novo Ticket de Suporte",
+    "description": "Selecione a categoria de suporte que melhor se adequa à sua necessidade. Nossa equipe irá ajudá-lo o mais rápido possível.",
+    "color": "#FEE75C",
+    "footer": "Clique na categoria para abrir um ticket."
   },
-  "transcript_embed": {
-    "title": "📄 Transcrito do Ticket: {canal}",
-    "description": "Ticket criado por **{criador}** da categoria **{categoria}** foi transcrito.",
-    "color": "#D3D3D3",
-    "footer": "Transcrito gerado em: {data_hora}"
-  },
-  "close_message": "Fechando ticket em 5 segundos...",
-  "no_permission_close_ticket": "Você não tem permissão para fechar este ticket.",
-  "error_creating_ticket": "Ocorreu um erro ao criar seu ticket. Por favor, tente novamente mais tarde ou contate um administrador. Erro: `{erro}`",
-  "ticket_already_open": "Já tens um ticket aberto nesta categoria: {canal_mencao}",
-  "ticket_already_open_other_category": "Já tens um ticket aberto em outra categoria: {canal_mencao}. Por favor, feche-o antes de abrir um novo.",
-  "ticket_created_success": "Seu ticket foi criado em {canal_mencao}!",
-  "transcript_creating": "Criando transcrito do ticket...",
-  "transcript_success": "Transcrito criado e enviado para o canal de logs!",
-
-  "ticket_welcome_embed": {
-    "title": "Bem-vindo(a) ao seu Ticket, {usuario}!",
-    "description": "Por favor, descreva o seu problema ou questão com o máximo de detalhes possível. Nossa equipe de suporte responderá em breve.",
-    "color": "#00FF00",
-    "footer": "ID do Ticket: {id_ticket} | Criado por: {usuario} em {data_hora}"
-  },
-
-
-
-
-
-
   "categories": {
-    "Reportar Jogador": {
-      "dropdown_description": "Use para relatar violações de regras de jogadores e comportamento inadequado. Forneça provas e detalhes.",
+    "Administração": {
+      "dropdown_description": "Entrar em contacto diretamente com a Administração.",
       "welcome_embed": {
-        "title": "Ticket de Administração - Bem-vindo(a) {usuario}!",
-        "description": "Bem-vindo à Administração. Nesta secção poderá expor quaisquer questões ou assuntos que deseje tratar com um membro da equipa. Será contactado num prazo máximo de 48 horas.\n\n❤️ **Enquanto aguardas:**\n\n🔸 Certifica-te de que forneceste todas as informações necessárias.\n🔸 Evita enviar mensagens desnecessárias para não atrasar a resposta.\n🔸 Mantém o respeito e aguarda pacientemente.\n\n🔒 O ticket será fechado pela Staff após a conclusão do mesmo.",
-        "color": "#FF0000",
-        "thumbnail_url": "https://media.discordapp.net/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png?ex=68629da1&is=68614c21&hm=c79a390f9fb67871cd0d6d282e655b7ecf109a01b3d322021e05824303acf9a0&=&format=webp&quality=lossless&width=922&height=922"
+        "title": "💼 Ticket de Administração",
+        "description": "Olá {usuario},\n\nBem-vindo ao seu ticket de Administração. Por favor, **descreva a sua questão ou o motivo do seu contato com a equipe de Administração** com o máximo de detalhes possível. Nossa equipe irá analisar o seu pedido em breve.",
+        "color": "#00008B",
+        "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png"
       }
     },
     "Suporte Geral": {
-      "dropdown_description": "Para dúvidas gerais, problemas técnicos ou assistência com o servidor/comunidade.",
+      "dropdown_description": "Para dúvidas e assistência geral.",
       "welcome_embed": {
-        "title": "Ticket de Suporte Geral - Bem-vindo(a) {usuario}!",
-        "description": "Bem-vindo(a) ao seu ticket de suporte geral!\nDescreva sua dúvida ou problema com o máximo de detalhes possível para que possamos ajudá-lo(a) rapidamente.\nNossa equipe responderá assim que possível.",
-        "color": "#0000FF"
+        "title": "📋 Ticket de Suporte Geral",
+        "description": "Olá {usuario},\n\nBem-vindo ao seu ticket de suporte geral. Por favor, **descreva a sua dúvida ou problema detalhadamente**. Nossa equipe está aqui para ajudar e responderá em breve.",
+        "color": "#0000FF",
+        "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png"
       }
     },
     "Recursos Humanos": {
-      "dropdown_description": "Assuntos relacionados a candidaturas, dúvidas sobre a equipe, folgas ou gestão de pessoal.",
+      "dropdown_description": "Assuntos de Recursos Humanos.",
       "welcome_embed": {
-        "title": "Ticket de Recursos Humanos - Bem-vindo(a) {usuario}!",
-        "description": "Este é o seu canal direto com o RH.\nPor favor, indique claramente o motivo do seu contato (candidatura, dúvida sobre RH, folga, etc.).\nUm representante do RH entrará em contato em breve.",
-        "color": "#008000"
+        "title": "👔 Ticket de Recursos Humanos",
+        "description": "Olá {usuario},\n\nBem-vindo ao seu ticket de Recursos Humanos. Por favor, **explique a sua questão ou o motivo do seu contato com a equipe de RH**. Seja o mais claro possível para que possamos encaminhá-lo para a pessoa certa.",
+        "color": "#00FF00",
+        "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png"
+      }
+    },
+    "Eventos": {
+      "dropdown_description": "Contactar a equipa de eventos.",
+      "welcome_embed": {
+        "title": "🎆 Ticket de Eventos",
+        "description": "Olá {usuario},\n\nBem-vindo ao seu ticket de Eventos. Por favor, **descreva a sua ideia ou questão relacionada a eventos**. Nossa equipe de eventos irá analisar e responder em breve.",
+        "color": "#FFD700",
+        "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png"
       }
     }
+  },
+  "ticket_welcome_embed": {
+    "title": "🎉 Bem-vindo ao seu Ticket da LSPD!",
+    "description": "Aguarde enquanto um membro da nossa equipe se junta a você para ajudar com o seu ticket na categoria **{categoria}**. Por favor, descreva o seu problema ou questão em detalhes para agilizar o suporte.",
+    "color": "#7289DA",
+    "footer": "Ticket ID: {id_ticket} | Criado por: {usuario} em {data_hora}",
+    "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png"
+  },
+  "ticket_created_success": "Seu ticket foi criado em {canal_mencao}! Por favor, dirija-se a ele para continuar.",
+  "ticket_already_open": "Você já tem um ticket aberto. Por favor, finalize-o ou use-o antes de abrir um novo: {canal_mencao}",
+  "error_creating_ticket": "Ocorreu um erro ao criar seu ticket. Por favor, tente novamente mais tarde ou contate um administrador. Erro: `{erro}`",
+  "no_permission_close_ticket": "Você não tem permissão para fechar este ticket.",
+  "no_permission_transcript_ticket": "Você não tem permissão para transcrever este ticket.",
+  "close_message": "Ticket fechado em 5 segundos. Criando transcrito...",
+  "transcript_creating": "Criando transcrito do ticket...",
+  "transcript_success": "Transcrito criado e enviado para o canal de logs!",
+  "transcript_embed": {
+    "title": "📄 Transcrito do Ticket: #{canal}",
+    "description": "Ticket criado por: **{criador}**\nCategoria: **{categoria}**\n\nEste é o histórico completo da conversa.",
+    "color": "#99AAB5",
+    "footer": "Transcrito gerado em: {data_hora}",
+    "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png"
   }
 }
