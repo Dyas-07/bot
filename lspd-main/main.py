@@ -34,6 +34,8 @@ async def hello(ctx):
         await ctx.send("🚫 Não tens permissões para isso.", ephemeral=True)
     else:
         await ctx.send("A atual mascote da LSPD é o SKIBIDI ZEKA!")
+        
+await bot.tree.sync() # Sincroniza a árvore de comandos de aplicação
 
 # --- COMANDO: !clear ---
 @bot.command(name="clear", help="Limpa um número especificado de mensagens no canal. Uso: !clear <quantidade>")
