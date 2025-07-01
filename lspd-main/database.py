@@ -176,7 +176,11 @@ def get_punches_for_period(start_time: datetime, end_time: datetime):
         if conn:
             conn.close()
 
-# --- Função para limpar a tabela de picagem de ponto ---
+# A função get_open_punches_for_auto_close foi removida.
+# A função auto_record_punch_out foi removida.
+# A função get_punches_for_overdue_notification foi removida.
+
+# --- Função para limpar a tabela de picagem de ponto (mantida, se ainda for útil para administração) ---
 def clear_punches_table() -> bool:
     """
     Limpa todos os registos da tabela 'punches' no PostgreSQL.
@@ -200,7 +204,7 @@ def clear_punches_table() -> bool:
         if conn:
             conn.close()
 
-# --- Funções para o banco de dados de tickets (adaptadas para PostgreSQL) ---
+# --- Funções para o banco de dados de tickets (mantidas e adaptadas para PostgreSQL) ---
 
 def add_ticket_to_db(channel_id: int, creator_id: int, creator_name: str, category: str):
     conn = None
