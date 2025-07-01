@@ -166,8 +166,9 @@ class TicketControlView(discord.ui.View):
     def __init__(self, cog_instance):
         super().__init__(timeout=None)
         self.cog = cog_instance
+        self.add_item(discord.ui.Button(label="Fechar Ticket", style=discord.ButtonStyle.danger, emoji="🔒", custom_id="close_ticket_button"))
 
-    @discord.ui.button(label="Fechar Ticket", style=discord.ButtonStyle.danger, emoji="🔒")
+    @discord.ui.button(label="Fechar Ticket", style=discord.ButtonStyle.danger, emoji="🔒", custom_id="close_ticket_button")
     async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(ephemeral=True)
         is_moderator = self.cog.ticket_moderator_role and self.cog.ticket_moderator_role in interaction.user.roles
@@ -197,22 +198,6 @@ class TicketControlView(discord.ui.View):
             for item in self.children:
                 item.disabled = False
             await interaction.message.edit(view=self)
-
-    @discord.ui.button(label="Transcrever Ticket", style=discord.ButtonStyle.secondary, emoji="📄")
-    async def transcript_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(ephemeral=True)
-        is_moderator = self.cog.ticket_moderator_role and self.cog.ticket_moderator_role in interaction.user.roles
-        ticket_data = next((t for t in get_all_open_tickets() if t['channel_id'] == interaction.channel.id), None)
-        is_creator = ticket_data and ticket_data['creator_id'] == interaction.user.id
-
-        if not is_moderator and not is_creator:
-            await interaction.followup.send(TICKET_MESSAGES.get("no_permission_transcript_ticket", ""), ephemeral=True)
-            print(log_message("WARNING", f"Sem permissão para transcrever por {interaction.user}", "🚫"))
-            return
-
-        await interaction.followup.send(TICKET_MESSAGES.get("transcript_creating", ""), ephemeral=True)
-        await self.cog.create_ticket_transcript(interaction.channel)
-        await interaction.followup.send(TICKET_MESSAGES.get("transcript_success", ""), ephemeral=True)
 
 class TicketsCog(commands.Cog):
     def __init__(self, bot):
@@ -288,7 +273,7 @@ class TicketsCog(commands.Cog):
                     print(log_message("WARNING", f"Canal {ticket['channel_id']} não encontrado, removido do DB", "⚠️"))
                     remove_ticket_from_db(ticket['channel_id'])
             except Exception as e:
-                print(log_message("ERROR", f"Erro ao reativar view em {ticket['channel_id']}: {e}", "❌"))
+                print(log_message("ERROR", f"Erro ao re-adicionar view em {ticket['channel_id']}: {e}", "❌"))
 
     @commands.command(name="setuptickets")
     @commands.has_permissions(administrator=True)
@@ -438,7 +423,7 @@ class TicketsCog(commands.Cog):
             return
 
         try:
-            await interaction.channel.set_permissions(target, overwrite=None)  # Remove permissões
+            await interaction.channel.set_permissions(target, overwrite=None)
             await interaction.response.send_message(f"✅ {target.mention} removido.", ephemeral=True)
             print(log_message("INFO", f"{interaction.user} removeu {target.name} de {interaction.channel.name}", "➖"))
         except discord.Forbidden:
