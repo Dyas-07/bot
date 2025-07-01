@@ -35,7 +35,7 @@ async def hello(ctx):
     else:
         await ctx.send("A atual mascote da LSPD é o SKIBIDI ZEKA!")
         
-await bot.tree.sync() # Sincroniza a árvore de comandos de aplicação
+
 
 # --- COMANDO: !clear ---
 @bot.command(name="clear", help="Limpa um número especificado de mensagens no canal. Uso: !clear <quantidade>")
@@ -109,7 +109,7 @@ async def clear_punch_db_command(ctx):
 @bot.event
 async def on_ready():
     print(f'✅ Bot conectado como {bot.user.name} ({bot.user.id})')
-
+await bot.tree.sync() # Sincroniza a árvore de comandos de aplicação
     setup_database()
     print('📦 Base de dados configurada.')
 
