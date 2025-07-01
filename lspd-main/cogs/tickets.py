@@ -85,8 +85,8 @@ def load_ticket_messages():
                         "fields": [
                             {"name": "Kuma RP | Organizações", "value": " ", "inline": False},
                             {"name": "Enquanto aguardas:", "value": "🔸 Certifica-te de que forneceste todas as informações necessárias.\n🔸 Evita enviar mensagens desnecessárias para não atrasar a resposta.\n🔸 Mantém o respeito e aguarda pacientemente.", "inline": False},
-                            {"name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.", "value": " ", "inline": false},
-                            {"name": "Instruções Específicas para Recursos Humanos:", "value": "Por favor, **explique a sua questão ou o motivo do seu contato com a equipe de RH**. Seja o mais claro possível para que possamos encaminhá-lo para a pessoa certa.", "inline": false}
+                            {"name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.", "value": " ", "inline": False},
+                            {"name": "Instruções Específicas para Recursos Humanos:", "value": "Por favor, **explique a sua questão ou o motivo do seu contato com a equipe de RH**. Seja o mais claro possível para que possamos encaminhá-lo para a pessoa certa.", "inline": False}
                         ],
                         "footer": "Kuma RP - Sistema de Tickets • {data_hora}"
                     }
@@ -101,8 +101,8 @@ def load_ticket_messages():
                         "fields": [
                             {"name": "Kuma RP | Organizações", "value": " ", "inline": False},
                             {"name": "Enquanto aguardas:", "value": "🔸 Certifica-te de que forneceste todas as informações necessárias.\n🔸 Evita enviar mensagens desnecessárias para não atrasar a resposta.\n🔸 Mantém o respeito e aguarda pacientemente.", "inline": False},
-                            {"name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.", "value": " ", "inline": false},
-                            {"name": "Instruções Específicas para Eventos:", "value": "Por favor, **descreva a sua ideia ou questão relacionada a eventos**. Nossa equipe de eventos irá analisar e responder em breve.", "inline": false}
+                            {"name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.", "value": " ", "inline": False},
+                            {"name": "Instruções Específicas para Eventos:", "value": "Por favor, **descreva a sua ideia ou questão relacionada a eventos**. Nossa equipe de eventos irá analisar e responder em breve.", "inline": False}
                         ],
                         "footer": "Kuma RP - Sistema de Tickets • {data_hora}"
                     }
@@ -147,7 +147,7 @@ class TicketPanelView(discord.ui.View):
 
 class TicketCategorySelect(discord.ui.Select):
     def __init__(self, cog_instance):
-        self.cog = cog_instance
+        self.cog = cog_instance # self.cog aqui é a instância de TicketsCog
         options = []
         
         # Garante que as mensagens já foram carregadas antes de construir as opções
@@ -285,7 +285,7 @@ class TicketCategorySelect(discord.ui.Select):
             await ticket_channel.send(
                 content=f"{interaction.user.mention} {self.cog.ticket_moderator_role.mention if self.cog.ticket_moderator_role else ''}",
                 embed=embed,
-                view=TicketControlView(self)
+                view=TicketControlView(self.cog) # <--- CORREÇÃO AQUI: Passa self.cog (TicketsCog)
             )
 
             await interaction.followup.send(
@@ -308,7 +308,7 @@ class TicketCategorySelect(discord.ui.Select):
 class TicketControlView(discord.ui.View):
     def __init__(self, cog_instance):
         super().__init__(timeout=None)
-        self.cog = cog_instance
+        self.cog = cog_instance # self.cog aqui é a instância de TicketsCog
 
     @discord.ui.button(label="Fechar Ticket", style=discord.ButtonStyle.danger, emoji="🔒", custom_id="close_ticket_button")
     async def close_ticket_button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -458,6 +458,7 @@ class TicketsCog(commands.Cog):
                         welcome_embed_title_prefix = TICKET_MESSAGES.get("ticket_welcome_embed", {}).get("title", "").split('{')[0].strip()
                         
                         if message.author == self.bot.user and message.embeds and (message.embeds[0].title or "").startswith(welcome_embed_title_prefix):
+                            # CORREÇÃO: Passa self (TicketsCog) para TicketControlView
                             self.bot.add_view(TicketControlView(self), message_id=message.id)
                             print(f"View de controle persistente adicionada para ticket {channel.name}.")
                             break # Encontrou a mensagem, para de procurar
