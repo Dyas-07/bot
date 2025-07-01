@@ -9,37 +9,129 @@
     "Administração": {
       "dropdown_description": "Entrar em contacto diretamente com a Administração.",
       "welcome_embed": {
-        "title": "💼 Ticket de Administração",
-        "description": "Olá {usuario},\n\nBem-vindo ao seu ticket de Administração. Por favor, **descreva a sua questão ou o motivo do seu contato com a equipe de Administração** com o máximo de detalhes possível. Nossa equipe irá analisar o seu pedido em breve.",
-        "color": "#00008B",
-        "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png"
+        "title": "Bem Vindo ao Suporte do KumaRP",
+        "description": "O teu ticket foi aberto com sucesso! A equipa de suporte irá analisá-lo e responder assim que possível.\n\n",
+        "color": "#36393F",
+        "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png",
+        "fields": [
+          {
+            "name": "Kuma RP | Organizações",
+            "value": " ",
+            "inline": false
+          },
+          {
+            "name": "Enquanto aguardas:",
+            "value": "🔸 Certifica-te de que forneceste todas as informações necessárias.\n🔸 Evita enviar mensagens desnecessárias para não atrasar a resposta.\n🔸 Mantém o respeito e aguarda pacientemente.",
+            "inline": false
+          },
+          {
+            "name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.",
+            "value": " ",
+            "inline": false
+          },
+          {
+            "name": "Instruções Específicas para Administração:",
+            "value": "Por favor, **descreva a sua questão ou o motivo do seu contato com a equipe de Administração** com o máximo de detalhes possível. Nossa equipe irá analisar o seu pedido em breve.",
+            "inline": false
+          }
+        ],
+        "footer": "Kuma RP - Sistema de Tickets • {data_hora}"
       }
     },
     "Suporte Geral": {
       "dropdown_description": "Para dúvidas e assistência geral.",
       "welcome_embed": {
-        "title": "📋 Ticket de Suporte Geral",
-        "description": "Olá {usuario},\n\nBem-vindo ao seu ticket de suporte geral. Por favor, **descreva a sua dúvida ou problema detalhadamente**. Nossa equipe está aqui para ajudar e responderá em breve.",
-        "color": "#0000FF",
-        "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png"
+        "title": "Bem Vindo ao Suporte do KumaRP",
+        "description": "O teu ticket foi aberto com sucesso! A equipa de suporte irá analisá-lo e responder assim que possível.\n\n",
+        "color": "#36393F",
+        "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png",
+        "fields": [
+          {
+            "name": "Kuma RP | Organizações",
+            "value": " ",
+            "inline": false
+          },
+          {
+            "name": "Enquanto aguardas:",
+            "value": "🔸 Certifica-te de que forneceste todas as informações necessárias.\n🔸 Evita enviar mensagens desnecessárias para não atrasar a resposta.\n🔸 Mantém o respeito e aguarda pacientemente.",
+            "inline": false
+          },
+          {
+            "name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.",
+            "value": " ",
+            "inline": false
+          },
+          {
+            "name": "Instruções Específicas para Suporte Geral:",
+            "value": "Por favor, **descreva a sua dúvida ou problema detalhadamente**. Nossa equipe está aqui para ajudar e responderá em breve.",
+            "inline": false
+          }
+        ],
+        "footer": "Kuma RP - Sistema de Tickets • {data_hora}"
       }
     },
     "Recursos Humanos": {
       "dropdown_description": "Assuntos de Recursos Humanos.",
       "welcome_embed": {
-        "title": "👔 Ticket de Recursos Humanos",
-        "description": "Olá {usuario},\n\nBem-vindo ao seu ticket de Recursos Humanos. Por favor, **explique a sua questão ou o motivo do seu contato com a equipe de RH**. Seja o mais claro possível para que possamos encaminhá-lo para a pessoa certa.",
-        "color": "#00FF00",
-        "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png"
+        "title": "Bem Vindo ao Suporte do KumaRP",
+        "description": "O teu ticket foi aberto com sucesso! A equipa de suporte irá analisá-lo e responder assim que possível.\n\n",
+        "color": "#36393F",
+        "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png",
+        "fields": [
+          {
+            "name": "Kuma RP | Organizações",
+            "value": " ",
+            "inline": false
+          },
+          {
+            "name": "Enquanto aguardas:",
+            "value": "🔸 Certifica-te de que forneceste todas as informações necessárias.\n🔸 Evita enviar mensagens desnecessárias para não atrasar a resposta.\n🔸 Mantém o respeito e aguarda pacientemente.",
+            "inline": false
+          },
+          {
+            "name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.",
+            "value": " ",
+            "inline": false
+          },
+          {
+            "name": "Instruções Específicas para Recursos Humanos:",
+            "value": "Por favor, **explique a sua questão ou o motivo do seu contato com a equipe de RH**. Seja o mais claro possível para que possamos encaminhá-lo para a pessoa certa.",
+            "inline": false
+          }
+        ],
+        "footer": "Kuma RP - Sistema de Tickets • {data_hora}"
       }
     },
     "Eventos": {
       "dropdown_description": "Contactar a equipa de eventos.",
       "welcome_embed": {
-        "title": "🎆 Ticket de Eventos",
-        "description": "Olá {usuario},\n\nBem-vindo ao seu ticket de Eventos. Por favor, **descreva a sua ideia ou questão relacionada a eventos**. Nossa equipe de eventos irá analisar e responder em breve.",
-        "color": "#FFD700",
-        "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png"
+        "title": "Bem Vindo ao Suporte do KumaRP",
+        "description": "O teu ticket foi aberto com sucesso! A equipa de suporte irá analisá-lo e responder assim que possível.\n\n",
+        "color": "#36393F",
+        "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png",
+        "fields": [
+          {
+            "name": "Kuma RP | Organizações",
+            "value": " ",
+            "inline": false
+          },
+          {
+            "name": "Enquanto aguardas:",
+            "value": "🔸 Certifica-te de que forneceste todas as informações necessárias.\n🔸 Evita enviar mensagens desnecessárias para não atrasar a resposta.\n🔸 Mantém o respeito e aguarda pacientemente.",
+            "inline": false
+          },
+          {
+            "name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.",
+            "value": " ",
+            "inline": false
+          },
+          {
+            "name": "Instruções Específicas para Eventos:",
+            "value": "Por favor, **descreva a sua ideia ou questão relacionada a eventos**. Nossa equipe de eventos irá analisar e responder em breve.",
+            "inline": false
+          }
+        ],
+        "footer": "Kuma RP - Sistema de Tickets • {data_hora}"
       }
     }
   },
