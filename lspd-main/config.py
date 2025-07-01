@@ -27,6 +27,8 @@ TICKET_MODERATOR_ROLE_ID = int(os.getenv('TICKET_MODERATOR_ROLE_ID')) if os.gete
 
 # Categorias de tickets para o dropdown do painel de tickets:
 # Cada tupla deve ser: (label no dropdown, descrição curta para o dropdown, emoji, ID da categoria no Discord)
+# Os IDs das categorias do Discord (e.g., TICKET_CATEGORY_PLAYER_REPORT_ID) devem ser obtidos do seu servidor e
+# adicionados como variáveis de ambiente em seu .env ou no Railway.
 TICKET_CATEGORIES = [
     ("Reportar Jogador", "Use para relatar violações de regras de jogadores.", "🚨", int(os.getenv('TICKET_CATEGORY_PLAYER_REPORT_ID')) if os.getenv('TICKET_CATEGORY_PLAYER_REPORT_ID') else None),
     ("Suporte Geral", "Para dúvidas e assistência geral.", "❓", int(os.getenv('TICKET_CATEGORY_GENERAL_SUPPORT_ID')) if os.getenv('TICKET_CATEGORY_GENERAL_SUPPORT_ID') else None),
@@ -52,9 +54,3 @@ ACTIVITY_CHANGE_INTERVAL_SECONDS = 30 # 30 segundos
 # Use nomes de fusos horários do banco de dados IANA (ex: 'Europe/Lisbon', 'America/Sao_Paulo', 'America/New_York')
 # Veja a lista completa aqui: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 DISPLAY_TIMEZONE = 'Europe/Lisbon' # Altere para o seu fuso horário desejado
-
-# --- Configurações de Notificação de Ponto Atrasado ---
-# Limite de horas para enviar notificação de ponto aberto (Ex: 4 horas)
-PUNCH_OVERDUE_NOTIFICATION_THRESHOLD_HOURS = 0.05
-# Intervalo em que o bot verifica pontos abertos para notificação (em minutos)
-PUNCH_OVERDUE_NOTIFICATION_CHECK_INTERVAL_MINUTES = 15 # Verifica a cada 15 minutos
