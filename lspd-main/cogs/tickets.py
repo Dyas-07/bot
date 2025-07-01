@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from typing import Union # Importa Union do módulo typing
 import json
 import os
 from datetime import datetime, timezone
@@ -495,7 +496,7 @@ class TicketCog(commands.Cog):
 
     @commands.command(name="add", help="Adiciona um usuário ou cargo ao ticket atual. Uso: !add <@usuário ou @cargo>")
     @commands.has_role(TICKET_MODERATOR_ROLE_ID) # Apenas moderadores de tickets podem usar
-    async def add_to_ticket(self, ctx: commands.Context, member_or_role: discord.Union[discord.Member, discord.Role]):
+    async def add_to_ticket(self, ctx: commands.Context, member_or_role: Union[discord.Member, discord.Role]): # Corrigido para typing.Union
         """
         Adiciona um usuário ou cargo ao canal do ticket atual.
         """
