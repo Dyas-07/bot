@@ -31,7 +31,7 @@ TICKET_MODERATOR_ROLE_ID = int(os.getenv('TICKET_MODERATOR_ROLE_ID')) if os.gete
 # adicionados como variáveis de ambiente em seu .env ou no Railway.
 TICKET_CATEGORIES = [
     ("Administração", "Entrar em contacto diretamente com a Administração.", "💼", int(os.getenv('TICKET_CATEGORY_ADMINISTRATION')) if os.getenv('TICKET_CATEGORY_ADMINISTRATION') else None),
-    ("Suporte Geral", "Para dúvidas e assistência geral.", "❓", int(os.getenv('TICKET_CATEGORY_GENERAL_SUPPORT_ID')) if os.getenv('TICKET_CATEGORY_GENERAL_SUPPORT_ID') else None),
+    ("Suporte Geral", "Para dúvidas e assistência geral.", "📋", int(os.getenv('TICKET_CATEGORY_GENERAL_CANDS')) if os.getenv('TICKET_CATEGORY_GENERAL_CANDS') else None),
     ("Recursos Humanos", "Assuntos de Recursos Humanos.", "👔", int(os.getenv('TICKET_CATEGORY_HR_ID')) if os.getenv('TICKET_CATEGORY_HR_ID') else None),
     ("Eventos", "Contactar a equipa de eventos.", "🎆", int(os.getenv('TICKET_CATEGORY_EVENTS')) if os.getenv('TICKET_CATEGORY_EVENTS') else None),
 ]
