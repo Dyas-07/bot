@@ -7,7 +7,8 @@ import asyncio
 
 from config import (
     TICKET_PANEL_CHANNEL_ID, TICKET_PANEL_MESSAGE_FILE, TICKET_MESSAGES_FILE,
-    TICKET_CATEGORIES, TICKET_MODERATOR_ROLE_ID, TICKET_TRANSCRIPTS_CHANNEL_ID
+    TICKET_CATEGORIES, TICKET_MODERATOR_ROLE_ID, TICKET_TRANSCRIPTS_CHANNEL_ID,
+    ROLE_ID # Importa ROLE_ID para permissões de administração geral
 )
 from database import add_ticket_to_db, remove_ticket_from_db, get_all_open_tickets
 
@@ -27,8 +28,8 @@ def load_ticket_messages():
                 "color": "#36393F",
                 "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png",
                 "fields": [
-                    {"name": "📌 Usa este sistema apenas quando necessário.", "value": "Traz sempre o máximo de informação e provas (se aplicável) para facilitar o atendimento.", "inline": false},
-                    {"name": "⏰ Os tickets são respondidos por ordem de chegada.\n👇 Escolhe uma categoria no menu dropdown abaixo:", "value": " ", "inline": false}
+                    {"name": "📌 Usa este sistema apenas quando necessário.", "value": "Traz sempre o máximo de informação e provas (se aplicável) para facilitar o atendimento.", "inline": False},
+                    {"name": "⏰ Os tickets são respondidos por ordem de chegada.\n👇 Escolhe uma categoria no menu dropdown abaixo:", "value": " ", "inline": False}
                 ],
                 "footer": "Kuma RP - Sistema de Tickets • {data_hora}",
                 "dropdown_placeholder": "Make a selection"
@@ -42,10 +43,10 @@ def load_ticket_messages():
                         "color": "#36393F",
                         "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png",
                         "fields": [
-                            {"name": "Kuma RP | Organizações", "value": " ", "inline": false},
-                            {"name": "Enquanto aguardas:", "value": "🔸 Certifica-te de que forneceste todas as informações necessárias.\n🔸 Evita enviar mensagens desnecessárias para não atrasar a resposta.\n🔸 Mantém o respeito e aguarda pacientemente.", "inline": false},
-                            {"name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.", "value": " ", "inline": false},
-                            {"name": "Instruções Específicas para Administração:", "value": "Por favor, **descreva a sua questão ou o motivo do seu contato com a equipe de Administração** com o máximo de detalhes possível. Nossa equipe irá analisar o seu pedido em breve.", "inline": false}
+                            {"name": "Kuma RP | Organizações", "value": " ", "inline": False},
+                            {"name": "Enquanto aguardas:", "value": "🔸 Certifica-te de que forneceste todas as informações necessárias.\n🔸 Evita enviar mensagens desnecessárias para não atrasar a resposta.\n🔸 Mantém o respeito e aguarda pacientemente.", "inline": False},
+                            {"name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.", "value": " ", "inline": False},
+                            {"name": "Instruções Específicas para Administração:", "value": "Por favor, **descreva a sua questão ou o motivo do seu contato com a equipe de Administração** com o máximo de detalhes possível. Nossa equipe irá analisar o seu pedido em breve.", "inline": False}
                         ],
                         "footer": "Kuma RP - Sistema de Tickets • {data_hora}"
                     }
@@ -58,10 +59,10 @@ def load_ticket_messages():
                         "color": "#36393F",
                         "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png",
                         "fields": [
-                            {"name": "Kuma RP | Organizações", "value": " ", "inline": false},
-                            {"name": "Enquanto aguardas:", "value": "🔸 Certifica-te de que forneceste todas as informações necessárias.\n🔸 Evita enviar mensagens desnecessárias para não atrasar a resposta.\n🔸 Mantém o respeito e aguarda pacientemente.", "inline": false},
-                            {"name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.", "value": " ", "inline": false},
-                            {"name": "Instruções Específicas para Suporte Geral:", "value": "Por favor, **descreva a sua dúvida ou problema detalhadamente**. Nossa equipe está aqui para ajudar e responderá em breve.", "inline": false}
+                            {"name": "Kuma RP | Organizações", "value": " ", "inline": False},
+                            {"name": "Enquanto aguardas:", "value": "🔸 Certifica-te de que forneceste todas as informações necessárias.\n🔸 Evita enviar mensagens desnecessárias para não atrasar a resposta.\n🔸 Mantém o respeito e aguarda pacientemente.", "inline": False},
+                            {"name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.", "value": " ", "inline": False},
+                            {"name": "Instruções Específicas para Suporte Geral:", "value": "Por favor, **descreva a sua dúvida ou problema detalhadamente**. Nossa equipe está aqui para ajudar e responderá em breve.", "inline": False}
                         ],
                         "footer": "Kuma RP - Sistema de Tickets • {data_hora}"
                     }
@@ -74,10 +75,10 @@ def load_ticket_messages():
                         "color": "#36393F",
                         "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png",
                         "fields": [
-                            {"name": "Kuma RP | Organizações", "value": " ", "inline": false},
-                            {"name": "Enquanto aguardas:", "value": "🔸 Certifica-te de que forneceste todas as informações necessárias.\n🔸 Evita enviar mensagens desnecessárias para não atrasar a resposta.\n🔸 Mantém o respeito e aguarda pacientemente.", "inline": false},
-                            {"name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.", "value": " ", "inline": false},
-                            {"name": "Instruções Específicas para Recursos Humanos:", "value": "Por favor, **explique a sua questão ou o motivo do seu contato com a equipe de RH**. Seja o mais claro possível para que possamos encaminhá-lo para a pessoa certa.", "inline": false}
+                            {"name": "Kuma RP | Organizações", "value": " ", "inline": False},
+                            {"name": "Enquanto aguardas:", "value": "🔸 Certifica-te de que forneceste todas as informações necessárias.\n🔸 Evita enviar mensagens desnecessárias para não atrasar a resposta.\n🔸 Mantém o respeito e aguarda pacientemente.", "inline": False},
+                            {"name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.", "value": " ", "inline": False},
+                            {"name": "Instruções Específicas para Recursos Humanos:", "value": "Por favor, **explique a sua questão ou o motivo do seu contato com a equipe de RH**. Seja o mais claro possível para que possamos encaminhá-lo para a pessoa certa.", "inline": False}
                         ],
                         "footer": "Kuma RP - Sistema de Tickets • {data_hora}"
                     }
@@ -90,10 +91,10 @@ def load_ticket_messages():
                         "color": "#36393F",
                         "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png",
                         "fields": [
-                            {"name": "Kuma RP | Organizações", "value": " ", "inline": false},
-                            {"name": "Enquanto aguardas:", "value": "🔸 Certifica-te de que forneceste todas as informações necessárias.\n🔸 Evita enviar mensagens desnecessárias para não atrasar a resposta.\n🔸 Mantém o respeito e aguarda pacientemente.", "inline": false},
-                            {"name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.", "value": " ", "inline": false},
-                            {"name": "Instruções Específicas para Eventos:", "value": "Por favor, **descreva a sua ideia ou questão relacionada a eventos**. Nossa equipe de eventos irá analisar e responder em breve.", "inline": false}
+                            {"name": "Kuma RP | Organizações", "value": " ", "inline": False},
+                            {"name": "Enquanto aguardas:", "value": "🔸 Certifica-te de que forneceste todas as informações necessárias.\n🔸 Evita enviar mensagens desnecessárias para não atrasar a resposta.\n🔸 Mantém o respeito e aguarda pacientemente.", "inline": False},
+                            {"name": "🔒 O ticket será fechado pela Staff após a conclusão do mesmo.", "value": " ", "inline": False},
+                            {"name": "Instruções Específicas para Eventos:", "value": "Por favor, **descreva a sua ideia ou questão relacionada a eventos**. Nossa equipe de eventos irá analisar e responder em breve.", "inline": False}
                         ],
                         "footer": "Kuma RP - Sistema de Tickets • {data_hora}"
                     }
@@ -457,7 +458,7 @@ class TicketCog(commands.Cog):
         if 'thumbnail_url' in embed_data:
             embed.set_thumbnail(url=embed_data['thumbnail_url'])
 
-        # NOVIDADE: Adiciona campos (fields) da configuração JSON para o painel
+        # Adiciona campos (fields) da configuração JSON para o painel
         if 'fields' in embed_data and isinstance(embed_data['fields'], list):
             for field in embed_data['fields']:
                 name = field.get('name', ' ')
@@ -465,7 +466,7 @@ class TicketCog(commands.Cog):
                 inline = field.get('inline', False)
                 embed.add_field(name=name, value=value, inline=inline)
         
-        # NOVIDADE: Adiciona o footer do painel com a data atual
+        # Adiciona o footer do painel com a data atual
         if 'footer' in embed_data:
             current_time_str = datetime.now().strftime('%d/%m/%Y %H:%M') # Formato "6/9/2025 13:54"
             embed.set_footer(text=embed_data['footer'].format(data_hora=current_time_str))
@@ -489,6 +490,94 @@ class TicketCog(commands.Cog):
         except Exception as e:
             await ctx.send(f"Erro ao enviar/atualizar painel de tickets: {e}", ephemeral=True)
             print(f"Erro ao enviar/atualizar painel de tickets: {e}")
+
+    # --- Comandos de Prefixo para Tickets ---
+
+    @commands.command(name="add", help="Adiciona um usuário ou cargo ao ticket atual. Uso: !add <@usuário ou @cargo>")
+    @commands.has_role(TICKET_MODERATOR_ROLE_ID) # Apenas moderadores de tickets podem usar
+    async def add_to_ticket(self, ctx: commands.Context, member_or_role: discord.Union[discord.Member, discord.Role]):
+        """
+        Adiciona um usuário ou cargo ao canal do ticket atual.
+        """
+        if not isinstance(ctx.channel, discord.TextChannel):
+            await ctx.send("Este comando só pode ser usado em um canal de texto.", ephemeral=True)
+            return
+
+        # Verifica se o canal é um canal de ticket (pode ser melhorado com uma verificação de DB se necessário)
+        # Por enquanto, assumimos que se o comando for usado, é para um ticket.
+        
+        try:
+            # Concede permissões de visualização e envio de mensagens
+            await ctx.channel.set_permissions(member_or_role, view_channel=True, send_messages=True, attach_files=True)
+            await ctx.send(f"✅ {member_or_role.mention} foi adicionado(a) a este ticket.", ephemeral=True)
+            print(f"{ctx.author.display_name} adicionou {member_or_role.name} ao ticket {ctx.channel.name}")
+        except discord.Forbidden:
+            await ctx.send("❌ Não tenho permissão para gerenciar permissões neste canal. Verifique minhas permissões.", ephemeral=True)
+        except Exception as e:
+            await ctx.send(f"❌ Ocorreu um erro ao adicionar {member_or_role.name}: {e}", ephemeral=True)
+            print(f"Erro ao adicionar membro/cargo ao ticket: {e}")
+
+    @add_to_ticket.error
+    async def add_to_ticket_error(self, ctx: commands.Context, error: commands.CommandError):
+        if isinstance(error, commands.MissingRole):
+            await ctx.send(f"🚫 Você não tem o cargo necessário para usar este comando. Requer o cargo com ID {TICKET_MODERATOR_ROLE_ID}.", ephemeral=True)
+        elif isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send("Uso correto: `!add <@usuário ou @cargo>`", ephemeral=True)
+        elif isinstance(error, commands.BadUnionArgument):
+            await ctx.send("Argumento inválido. Por favor, mencione um usuário ou cargo válido.", ephemeral=True)
+        else:
+            await ctx.send(f"Ocorreu um erro inesperado: {error}", ephemeral=True)
+            print(f"Erro no comando !add: {error}")
+
+
+    @commands.command(name="rename", help="Muda o nome do canal do ticket atual. Uso: !rename <novo_nome>")
+    @commands.has_role(TICKET_MODERATOR_ROLE_ID) # Apenas moderadores de tickets podem usar
+    async def rename_ticket(self, ctx: commands.Context, *, novo_nome: str):
+        """
+        Muda o nome do canal do ticket atual.
+        """
+        if not isinstance(ctx.channel, discord.TextChannel):
+            await ctx.send("Este comando só pode ser usado em um canal de texto.", ephemeral=True)
+            return
+
+        # Verifica se o canal é um canal de ticket
+        open_tickets = get_all_open_tickets()
+        is_ticket_channel = any(ticket['channel_id'] == ctx.channel.id for ticket in open_tickets)
+
+        if not is_ticket_channel:
+            await ctx.send("Este comando só pode ser usado em um canal de ticket.", ephemeral=True)
+            return
+
+        # Limita o comprimento do nome do canal para evitar erros do Discord
+        if len(novo_nome) > 100:
+            await ctx.send("O nome do canal não pode ter mais de 100 caracteres.", ephemeral=True)
+            return
+
+        # Formata o nome para ser amigável ao Discord (minúsculas, sem espaços, etc.)
+        formatted_name = novo_nome.lower().replace(' ', '-')
+        # Remove caracteres especiais que o Discord não permite em nomes de canal
+        formatted_name = ''.join(c for c in formatted_name if c.isalnum() or c == '-')
+
+        try:
+            old_name = ctx.channel.name
+            await ctx.channel.edit(name=formatted_name)
+            await ctx.send(f"✅ Nome do ticket alterado de `{old_name}` para `{formatted_name}`.", ephemeral=True)
+            print(f"{ctx.author.display_name} renomeou o ticket de {old_name} para {formatted_name}")
+        except discord.Forbidden:
+            await ctx.send("❌ Não tenho permissão para gerenciar canais. Verifique minhas permissões.", ephemeral=True)
+        except Exception as e:
+            await ctx.send(f"❌ Ocorreu um erro ao renomear o ticket: {e}", ephemeral=True)
+            print(f"Erro ao renomear ticket: {e}")
+
+    @rename_ticket.error
+    async def rename_ticket_error(self, ctx: commands.Context, error: commands.CommandError):
+        if isinstance(error, commands.MissingRole):
+            await ctx.send(f"🚫 Você não tem o cargo necessário para usar este comando. Requer o cargo com ID {TICKET_MODERATOR_ROLE_ID}.", ephemeral=True)
+        elif isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send("Uso correto: `!rename <novo_nome>`", ephemeral=True)
+        else:
+            await ctx.send(f"Ocorreu um erro inesperado: {error}", ephemeral=True)
+            print(f"Erro no comando !rename: {error}")
 
 
 class TicketPanelView(discord.ui.View):
