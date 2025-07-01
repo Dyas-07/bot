@@ -73,7 +73,7 @@ class TicketCategorySelect(discord.ui.Select):
             custom_id="ticket_category_select"
         )
 
-    async def callback(self, interaction: discord.Interaction):
+        async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True, thinking=True)
         selected_category = self.values[0]
         category_info = next((cat for cat in TICKET_CATEGORIES if cat[0] == selected_category), None)
@@ -108,18 +108,21 @@ class TicketCategorySelect(discord.ui.Select):
                 print(log_message("ERROR", f"Categoria ID {category_id} inválida", "❌"))
                 return
 
-            overwrites = {
-                guild.default_role: discord.PermissionOverwrite(read_messages=False),
-                interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True, attach_files=True),
-                guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, embed_links=True, attach_files=True, manage_channels=True)
-            }
+            # Herdando permissões da categoria, apenas adicionando exceções específicas
+            overwrites = {}
+            # Garantir que o criador do ticket tenha acesso, se não já permitido pela categoria
+            overwrites[interaction.user] = discord.PermissionOverwrite(read_messages=True, send_messages=True, attach_files=True)
+            # Garantir que o bot tenha permissões completas
+            overwrites[guild.me] = discord.PermissionOverwrite(read_messages=True, send_messages=True, embed_links=True, attach_files=True, manage_channels=True)
+            # Adicionar moderadores, se configurado
             if self.cog.ticket_moderator_role:
                 overwrites[self.cog.ticket_moderator_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_channels=True)
 
             ticket_channel = await category_channel.create_text_channel(
                 name=f"ticket-{interaction.user.name.lower().replace(' ', '-')}",
                 overwrites=overwrites,
-                topic=f"Ticket para {interaction.user.display_name} ({selected_category})"
+                topic=f"Ticket para {interaction.user.display_name} ({selected_category})",
+                reason=f"Ticket criado por {interaction.user.display_name}"
             )
 
             add_ticket_to_db(ticket_channel.id, interaction.user.id, interaction.user.display_name, selected_category)
