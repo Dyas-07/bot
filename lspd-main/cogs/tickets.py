@@ -73,7 +73,7 @@ class TicketCategorySelect(discord.ui.Select):
             custom_id="ticket_category_select"
         )
 
-        async def callback(self, interaction: discord.Interaction):
+    async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True, thinking=True)
         selected_category = self.values[0]
         category_info = next((cat for cat in TICKET_CATEGORIES if cat[0] == selected_category), None)
@@ -169,7 +169,6 @@ class TicketControlView(discord.ui.View):
     def __init__(self, cog_instance):
         super().__init__(timeout=None)
         self.cog = cog_instance
-        # Removido add_item, pois o botão é definido pelo decorador
 
     @discord.ui.button(label="Fechar Ticket", style=discord.ButtonStyle.danger, emoji="🔒", custom_id="close_ticket_button")
     async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
