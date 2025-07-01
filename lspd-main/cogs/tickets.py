@@ -22,10 +22,16 @@ def load_ticket_messages():
         # Estrutura padrão para evitar erros, mas que deve ser substituída pelo arquivo real
         return {
             "ticket_panel_embed": {
-                "title": "📋 Abrir um Novo Ticket de Suporte",
-                "description": "Selecione a categoria de suporte que melhor se adequa à sua necessidade. Nossa equipe irá ajudá-lo o mais rápido possível.",
-                "color": "#FEE75C",
-                "footer": "Clique na categoria para abrir um ticket."
+                "title": "Sistema de Tickets - LSPD | KUMA RP",
+                "description": "Bem-vindo ao sistema de tickets da LSPD!\nSeleciona abaixo a categoria que mais se adequa ao teu pedido. Cada opção serve para um tipo específico de situação, seja ela administrativa, recursos humanos ou recrutamento.",
+                "color": "#36393F",
+                "thumbnail_url": "https://cdn.discordapp.com/attachments/1260308350776774817/1386713008256061512/Untitled_1024_x_1024_px_4.png",
+                "fields": [
+                    {"name": "📌 Usa este sistema apenas quando necessário.", "value": "Traz sempre o máximo de informação e provas (se aplicável) para facilitar o atendimento.", "inline": false},
+                    {"name": "⏰ Os tickets são respondidos por ordem de chegada.\n👇 Escolhe uma categoria no menu dropdown abaixo:", "value": " ", "inline": false}
+                ],
+                "footer": "Kuma RP - Sistema de Tickets • {data_hora}",
+                "dropdown_placeholder": "Make a selection"
             },
             "categories": {
                 "Administração": {
@@ -124,7 +130,7 @@ TICKET_MESSAGES = load_ticket_messages()
 class TicketCategorySelect(discord.ui.Select):
     def __init__(self, cog_instance):
         super().__init__(
-            placeholder=TICKET_MESSAGES['ticket_panel_embed']['footer'], # Reutiliza o footer como placeholder
+            placeholder=TICKET_MESSAGES['ticket_panel_embed'].get('dropdown_placeholder', 'Selecione uma categoria...'), # Usa o novo placeholder
             min_values=1,
             max_values=1,
             custom_id="ticket_category_select"
@@ -219,18 +225,14 @@ class TicketCategorySelect(discord.ui.Select):
             if 'thumbnail_url' in welcome_embed_data:
                 welcome_embed.set_thumbnail(url=welcome_embed_data['thumbnail_url'])
 
-            # NOVIDADE: Adiciona campos (fields) da configuração JSON
             if 'fields' in welcome_embed_data and isinstance(welcome_embed_data['fields'], list):
                 for field in welcome_embed_data['fields']:
                     name = field.get('name', ' ')
                     value = field.get('value', ' ')
                     inline = field.get('inline', False)
-                    # Formata o valor do campo se contiver {usuario}
                     welcome_embed.add_field(name=name, value=value.format(usuario=user.mention) if '{usuario}' in value else value, inline=inline)
             
-            # NOVIDADE: Adiciona o footer se presente na configuração da categoria
             if 'footer' in welcome_embed_data:
-                # Formata o rodapé com a hora atual
                 current_time_str = datetime.now().strftime('%d/%m/%Y às %H:%M') # Formato "Today at 1:05"
                 welcome_embed.set_footer(text=welcome_embed_data['footer'].format(data_hora=current_time_str))
 
@@ -452,7 +454,21 @@ class TicketCog(commands.Cog):
             description=embed_data['description'],
             color=discord.Color.from_str(embed_data['color'])
         )
-        embed.set_footer(text=embed_data['footer'])
+        if 'thumbnail_url' in embed_data:
+            embed.set_thumbnail(url=embed_data['thumbnail_url'])
+
+        # NOVIDADE: Adiciona campos (fields) da configuração JSON para o painel
+        if 'fields' in embed_data and isinstance(embed_data['fields'], list):
+            for field in embed_data['fields']:
+                name = field.get('name', ' ')
+                value = field.get('value', ' ')
+                inline = field.get('inline', False)
+                embed.add_field(name=name, value=value, inline=inline)
+        
+        # NOVIDADE: Adiciona o footer do painel com a data atual
+        if 'footer' in embed_data:
+            current_time_str = datetime.now().strftime('%d/%m/%Y %H:%M') # Formato "6/9/2025 13:54"
+            embed.set_footer(text=embed_data['footer'].format(data_hora=current_time_str))
 
         view = TicketPanelView(self)
 
@@ -469,7 +485,7 @@ class TicketCog(commands.Cog):
             print("Mensagem do painel de tickets não encontrada, recriando...")
             message = await channel.send(embed=embed, view=view)
             await self._save_ticket_panel_message_id(message.id)
-            await ctx.send("Painel de tickets recriado com sucesso!", ephemeral=True)
+            await ctx.send("Mensagem de picagem de ponto recriada com sucesso!", ephemeral=True)
         except Exception as e:
             await ctx.send(f"Erro ao enviar/atualizar painel de tickets: {e}", ephemeral=True)
             print(f"Erro ao enviar/atualizar painel de tickets: {e}")
