@@ -14,15 +14,14 @@ from config import (
 )
 from database import add_ticket_to_db, remove_ticket_from_db, get_all_open_tickets
 
-# Função auxiliar para formatar logs (consistente com main.py e punch_card.py)
+# Função auxiliar para formatar logs
 def log_message(level: str, message: str, emoji: str = "") -> str:
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M:%S")
     return f"[{timestamp}] [{level.upper():<7}] {emoji} {message}"
 
-# Variável global para armazenar as mensagens customizadas para tickets
+# Variável global para armazenar as mensagens customizadas
 TICKET_MESSAGES = {}
 
-# Função para carregar as mensagens customizadas do arquivo JSON
 def load_ticket_messages():
     global TICKET_MESSAGES
     try:
@@ -30,12 +29,10 @@ def load_ticket_messages():
             TICKET_MESSAGES = json.load(f)
         print(log_message("INFO", f"Mensagens de ticket carregadas de {TICKET_MESSAGES_FILE}", "📄"))
     except FileNotFoundError:
-        print(log_message("ERROR", f"Arquivo de mensagens de ticket '{TICKET_MESSAGES_FILE}' não encontrado", "❌"))
-        print(log_message("INFO", "Usando estrutura de mensagens padrão"))
+        print(log_message("ERROR", f"Arquivo '{TICKET_MESSAGES_FILE}' não encontrado", "❌"))
         TICKET_MESSAGES = {}
     except json.JSONDecodeError as e:
         print(log_message("ERROR", f"Erro ao decodificar JSON em {TICKET_MESSAGES_FILE}: {e}", "❌"))
-        print(log_message("INFO", "Usando estrutura de mensagens padrão"))
         TICKET_MESSAGES = {}
 
 # --- Views e Componentes ---
@@ -50,28 +47,23 @@ class TicketCategorySelect(discord.ui.Select):
     def __init__(self, cog_instance):
         self.cog = cog_instance
         options = []
-        
-        # Garante que as mensagens já foram carregadas
         if not TICKET_MESSAGES:
             load_ticket_messages()
 
-        # Valida as categorias contra TICKET_CATEGORIES
         valid_categories = {cat[0] for cat in TICKET_CATEGORIES}
         json_categories = TICKET_MESSAGES.get("categories", {}).keys()
-        missing_categories = valid_categories - set(json_categories)
-        if missing_categories:
-            print(log_message("WARNING", f"Categorias em TICKET_CATEGORIES não encontradas em ticket_messages.json: {missing_categories}", "⚠️"))
+        if missing := valid_categories - set(json_categories):
+            print(log_message("WARNING", f"Categorias ausentes em ticket_messages.json: {missing}", "⚠️"))
 
         for label, _, emoji, category_id in TICKET_CATEGORIES:
             category_data = TICKET_MESSAGES.get("categories", {}).get(label, {})
-            dropdown_description = category_data.get("dropdown_description", f"Descrição padrão para {label}")
+            dropdown_description = category_data.get("dropdown_description", f"Descrição para {label}")
             if len(dropdown_description) > 100:
                 dropdown_description = dropdown_description[:97] + "..."
-
             if category_id:
                 options.append(discord.SelectOption(label=label, description=dropdown_description, emoji=emoji, value=label))
             else:
-                print(log_message("WARNING", f"Categoria '{label}' sem ID de categoria configurado. Ignorada no dropdown", "⚠️"))
+                print(log_message("WARNING", f"Categoria '{label}' sem ID válido", "⚠️"))
 
         super().__init__(
             placeholder=TICKET_MESSAGES.get("ticket_panel_embed", {}).get("dropdown_placeholder", "Selecione uma categoria..."),
@@ -83,47 +75,37 @@ class TicketCategorySelect(discord.ui.Select):
 
     async def callback(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True, thinking=True)
-        
-        selected_category_label = self.values[0]
-        selected_category_info = next((cat for cat in TICKET_CATEGORIES if cat[0] == selected_category_label), None)
+        selected_category = self.values[0]
+        category_info = next((cat for cat in TICKET_CATEGORIES if cat[0] == selected_category), None)
 
-        if not selected_category_info:
-            await interaction.followup.send("Erro: Categoria selecionada inválida.", ephemeral=True)
-            print(log_message("ERROR", f"Categoria inválida '{selected_category_label}' selecionada por {interaction.user.display_name} ({interaction.user.id})", "❌"))
+        if not category_info:
+            await interaction.followup.send("Categoria inválida.", ephemeral=True)
+            print(log_message("ERROR", f"Categoria '{selected_category}' inválida para {interaction.user}", "❌"))
             return
 
-        category_name, _, _, category_id = selected_category_info
+        _, _, _, category_id = category_info
 
-        # Verificação do limite de tickets
         all_open_tickets = get_all_open_tickets()
-        user_open_tickets = [ticket for ticket in all_open_tickets if ticket['creator_id'] == interaction.user.id]
-        MAX_OPEN_TICKETS = 2
-        if len(user_open_tickets) >= MAX_OPEN_TICKETS:
-            await interaction.followup.send(
-                f"Você já tem {MAX_OPEN_TICKETS} tickets abertos. Por favor, feche um ticket existente antes de abrir um novo.",
-                ephemeral=True
-            )
-            print(log_message("WARNING", f"Usuário {interaction.user.display_name} ({interaction.user.id}) tentou abrir ticket, mas atingiu o limite de {MAX_OPEN_TICKETS}", "⚠️"))
+        user_tickets = [t for t in all_open_tickets if t['creator_id'] == interaction.user.id]
+        if len(user_tickets) >= 2:
+            await interaction.followup.send("Limite de 2 tickets atingido.", ephemeral=True)
+            print(log_message("WARNING", f"Limite de tickets atingido por {interaction.user}", "⚠️"))
             return
 
-        # Verifica se o usuário já tem um ticket aberto na mesma categoria
-        existing_ticket = next((t for t in user_open_tickets if t['category'] == category_name), None)
+        existing_ticket = next((t for t in user_tickets if t['category'] == selected_category), None)
         if existing_ticket:
-            existing_channel = self.cog.bot.get_channel(existing_ticket['channel_id'])
-            channel_mention = existing_channel.mention if existing_channel else f"ID do Canal: {existing_ticket['channel_id']}"
-            await interaction.followup.send(
-                TICKET_MESSAGES.get("ticket_already_open", "Você já tem um ticket aberto: {canal_mencao}").format(canal_mencao=channel_mention),
-                ephemeral=True
-            )
-            print(log_message("WARNING", f"Usuário {interaction.user.display_name} ({interaction.user.id}) tentou abrir ticket em {category_name}, mas já tem um: {channel_mention}", "⚠️"))
+            channel = self.cog.bot.get_channel(existing_ticket['channel_id'])
+            mention = channel.mention if channel else f"ID: {existing_ticket['channel_id']}"
+            await interaction.followup.send(TICKET_MESSAGES.get("ticket_already_open", "").format(canal_mencao=mention), ephemeral=True)
+            print(log_message("WARNING", f"Ticket existente para {interaction.user} em {mention}", "⚠️"))
             return
 
         try:
             guild = interaction.guild
             category_channel = guild.get_channel(category_id)
             if not category_channel or not isinstance(category_channel, discord.CategoryChannel):
-                await interaction.followup.send(f"Erro: A categoria '{category_name}' não foi encontrada ou não é uma categoria válida.", ephemeral=True)
-                print(log_message("ERROR", f"Categoria {category_name} (ID: {category_id}) não encontrada ou inválida", "❌"))
+                await interaction.followup.send("Categoria inválida ou não encontrada.", ephemeral=True)
+                print(log_message("ERROR", f"Categoria ID {category_id} inválida", "❌"))
                 return
 
             overwrites = {
@@ -137,44 +119,34 @@ class TicketCategorySelect(discord.ui.Select):
             ticket_channel = await category_channel.create_text_channel(
                 name=f"ticket-{interaction.user.name.lower().replace(' ', '-')}",
                 overwrites=overwrites,
-                topic=f"Ticket de suporte para {interaction.user.display_name} ({category_name} - ID: {interaction.user.id})"
+                topic=f"Ticket para {interaction.user.display_name} ({selected_category})"
             )
 
-            # Adiciona o ticket ao banco de dados
-            add_ticket_to_db(ticket_channel.id, interaction.user.id, interaction.user.display_name, category_name)
-            print(log_message("INFO", f"Ticket criado por {interaction.user.display_name} ({interaction.user.id}) em {ticket_channel.name} ({category_name})", "🎫"))
+            add_ticket_to_db(ticket_channel.id, interaction.user.id, interaction.user.display_name, selected_category)
+            print(log_message("INFO", f"Ticket criado para {interaction.user} em {ticket_channel.name}", "🎫"))
 
-            # Criação da embed de boas-vindas
-            category_messages = TICKET_MESSAGES.get("categories", {}).get(category_name, {})
-            welcome_embed_data = category_messages.get("welcome_embed", TICKET_MESSAGES.get("ticket_welcome_embed", {}))
-            
+            category_data = TICKET_MESSAGES.get("categories", {}).get(selected_category, {})
+            welcome_data = category_data.get("welcome_embed", TICKET_MESSAGES.get("ticket_welcome_embed", {}))
+
             embed = discord.Embed(
-                title=welcome_embed_data.get("title", "Bem-vindo ao seu Ticket").format(categoria=category_name, usuario=interaction.user.display_name),
-                description=welcome_embed_data.get("description", "Descrição padrão").format(categoria=category_name, usuario=interaction.user.display_name),
-                color=discord.Color.from_str(welcome_embed_data.get("color", "#7289DA"))
+                title=welcome_data.get("title", "").format(categoria=selected_category, usuario=interaction.user.display_name),
+                description=welcome_data.get("description", "").format(categoria=selected_category),
+                color=discord.Color.from_str(welcome_data.get("color", "#7289DA"))
             )
-
-            # Adiciona campos (fields) da embed
-            for field in welcome_embed_data.get("fields", []):
+            for field in welcome_data.get("fields", []):
                 embed.add_field(
-                    name=field.get("name", " "),
-                    value=field.get("value", " ").format(categoria=category_name, usuario=interaction.user.display_name),
+                    name=field.get("name", ""),
+                    value=field.get("value", "").format(categoria=selected_category),
                     inline=field.get("inline", False)
                 )
-
-            # Adiciona thumbnail, se disponível
-            thumbnail_url = welcome_embed_data.get("thumbnail_url", None)
-            if thumbnail_url:
-                embed.set_thumbnail(url=thumbnail_url)
-
-            # Adiciona footer
-            embed.set_footer(text=welcome_embed_data.get("footer", "").format(
+            if thumbnail := welcome_data.get("thumbnail_url"):
+                embed.set_thumbnail(url=thumbnail)
+            embed.set_footer(text=welcome_data.get("footer", "").format(
                 id_ticket=ticket_channel.id,
                 usuario=interaction.user.display_name,
                 data_hora=datetime.now(timezone.utc).astimezone().strftime('%d/%m/%Y %H:%M')
             ))
 
-            # Envia a mensagem de boas-vindas
             await ticket_channel.send(
                 content=f"{interaction.user.mention} {self.cog.ticket_moderator_role.mention if self.cog.ticket_moderator_role else ''}",
                 embed=embed,
@@ -182,77 +154,65 @@ class TicketCategorySelect(discord.ui.Select):
             )
 
             await interaction.followup.send(
-                TICKET_MESSAGES.get("ticket_created_success", "Seu ticket foi criado em {canal_mencao}!").format(canal_mencao=ticket_channel.mention),
+                TICKET_MESSAGES.get("ticket_created_success", "").format(canal_mencao=ticket_channel.mention),
                 ephemeral=True
             )
 
         except Exception as e:
-            await interaction.followup.send(
-                TICKET_MESSAGES.get("error_creating_ticket", "Erro ao criar ticket: `{erro}`").format(erro=str(e)),
-                ephemeral=True
-            )
-            print(log_message("ERROR", f"Erro ao criar ticket para {interaction.user.display_name} ({interaction.user.id}): {e}", "❌"))
+            await interaction.followup.send(TICKET_MESSAGES.get("error_creating_ticket", "").format(erro=str(e)), ephemeral=True)
+            print(log_message("ERROR", f"Erro ao criar ticket para {interaction.user}: {e}", "❌"))
 
 class TicketControlView(discord.ui.View):
     def __init__(self, cog_instance):
         super().__init__(timeout=None)
         self.cog = cog_instance
 
-    @discord.ui.button(label="Fechar Ticket", style=discord.ButtonStyle.danger, emoji="🔒", custom_id="close_ticket_button")
-    async def close_ticket_button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(ephemeral=True, thinking=True)
-        
+    @discord.ui.button(label="Fechar Ticket", style=discord.ButtonStyle.danger, emoji="🔒")
+    async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=True)
         is_moderator = self.cog.ticket_moderator_role and self.cog.ticket_moderator_role in interaction.user.roles
         ticket_data = next((t for t in get_all_open_tickets() if t['channel_id'] == interaction.channel.id), None)
         is_creator = ticket_data and ticket_data['creator_id'] == interaction.user.id
 
         if not is_moderator and not is_creator:
-            await interaction.followup.send(
-                TICKET_MESSAGES.get("no_permission_close_ticket", "Você não tem permissão para fechar este ticket."),
-                ephemeral=True
-            )
-            print(log_message("WARNING", f"Usuário {interaction.user.display_name} ({interaction.user.id}) tentou fechar ticket sem permissão", "🚫"))
+            await interaction.followup.send(TICKET_MESSAGES.get("no_permission_close_ticket", ""), ephemeral=True)
+            print(log_message("WARNING", f"Sem permissão para fechar ticket por {interaction.user}", "🚫"))
             return
 
         for item in self.children:
             item.disabled = True
         await interaction.message.edit(view=self)
 
-        await interaction.channel.send(TICKET_MESSAGES.get("close_message", "Fechando ticket em 5 segundos..."))
+        await interaction.channel.send(TICKET_MESSAGES.get("close_message", ""))
         await asyncio.sleep(5)
-
         await self.cog.create_ticket_transcript(interaction.channel)
 
         try:
             await interaction.channel.delete()
             remove_ticket_from_db(interaction.channel.id)
-            print(log_message("INFO", f"Ticket {interaction.channel.name} fechado por {interaction.user.display_name} ({interaction.user.id})", "🔒"))
+            print(log_message("INFO", f"Ticket {interaction.channel.name} fechado por {interaction.user}", "🔒"))
         except Exception as e:
-            await interaction.followup.send(f"Erro ao deletar o canal: {e}", ephemeral=True)
-            print(log_message("ERROR", f"Erro ao deletar ticket {interaction.channel.name}: {e}", "❌"))
+            await interaction.followup.send(f"Erro ao deletar: {e}", ephemeral=True)
+            print(log_message("ERROR", f"Erro ao deletar {interaction.channel.name}: {e}", "❌"))
             for item in self.children:
                 item.disabled = False
             await interaction.message.edit(view=self)
 
-    @discord.ui.button(label="Transcrever Ticket", style=discord.ButtonStyle.secondary, emoji="📄", custom_id="transcript_ticket_button")
-    async def transcript_ticket_button_callback(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(ephemeral=True, thinking=True)
-        
+    @discord.ui.button(label="Transcrever Ticket", style=discord.ButtonStyle.secondary, emoji="📄")
+    async def transcript_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer(ephemeral=True)
         is_moderator = self.cog.ticket_moderator_role and self.cog.ticket_moderator_role in interaction.user.roles
         ticket_data = next((t for t in get_all_open_tickets() if t['channel_id'] == interaction.channel.id), None)
         is_creator = ticket_data and ticket_data['creator_id'] == interaction.user.id
 
         if not is_moderator and not is_creator:
-            await interaction.followup.send(
-                TICKET_MESSAGES.get("no_permission_transcript_ticket", "Você não tem permissão para transcrever este ticket."),
-                ephemeral=True
-            )
-            print(log_message("WARNING", f"Usuário {interaction.user.display_name} ({interaction.user.id}) tentou transcrever ticket sem permissão", "🚫"))
+            await interaction.followup.send(TICKET_MESSAGES.get("no_permission_transcript_ticket", ""), ephemeral=True)
+            print(log_message("WARNING", f"Sem permissão para transcrever por {interaction.user}", "🚫"))
             return
 
-        await interaction.followup.send(TICKET_MESSAGES.get("transcript_creating", "Criando transcrito do ticket..."), ephemeral=True)
+        await interaction.followup.send(TICKET_MESSAGES.get("transcript_creating", ""), ephemeral=True)
         await self.cog.create_ticket_transcript(interaction.channel)
-        await interaction.followup.send(TICKET_MESSAGES.get("transcript_success", "Transcrito criado e enviado para o canal de logs!"), ephemeral=True)
+        await interaction.followup.send(TICKET_MESSAGES.get("transcript_success", ""), ephemeral=True)
 
 class TicketsCog(commands.Cog):
     def __init__(self, bot):
@@ -265,20 +225,20 @@ class TicketsCog(commands.Cog):
         try:
             with open(TICKET_PANEL_MESSAGE_FILE, 'r', encoding='utf-8') as f:
                 self._ticket_panel_message_id = int(f.read().strip())
-            print(log_message("INFO", f"ID da mensagem do painel de tickets carregado: {self._ticket_panel_message_id}", "📄"))
+            print(log_message("INFO", f"ID do painel carregado: {self._ticket_panel_message_id}", "📄"))
         except (FileNotFoundError, ValueError):
             self._ticket_panel_message_id = None
-            print(log_message("WARNING", f"Arquivo {TICKET_PANEL_MESSAGE_FILE} não encontrado ou inválido", "⚠️"))
+            print(log_message("WARNING", f"Arquivo {TICKET_PANEL_MESSAGE_FILE} não encontrado", "⚠️"))
 
     async def _save_ticket_panel_message_id(self, message_id: int):
         self._ticket_panel_message_id = message_id
         with open(TICKET_PANEL_MESSAGE_FILE, 'w', encoding='utf-8') as f:
             f.write(str(message_id))
-        print(log_message("INFO", f"ID da mensagem do painel de tickets salvo: {self._ticket_panel_message_id}", "💾"))
+        print(log_message("INFO", f"ID do painel salvo: {self._ticket_panel_message_id}", "💾"))
 
     @commands.Cog.listener()
     async def on_ready(self):
-        print(log_message("INFO", "TicketsCog está pronto", "✅"))
+        print(log_message("INFO", "TicketsCog pronto", "✅"))
         await self._load_ticket_panel_message_id()
 
         if self._ticket_panel_message_id:
@@ -287,15 +247,15 @@ class TicketsCog(commands.Cog):
                 if channel:
                     await channel.fetch_message(self._ticket_panel_message_id)
                     self.bot.add_view(TicketPanelView(self), message_id=self._ticket_panel_message_id)
-                    print(log_message("INFO", f"View do painel de tickets persistente adicionada para mensagem ID: {self._ticket_panel_message_id}", "🔗"))
+                    print(log_message("INFO", f"View do painel reativada: {self._ticket_panel_message_id}", "🔗"))
                 else:
-                    print(log_message("WARNING", f"Canal do painel de tickets (ID: {TICKET_PANEL_CHANNEL_ID}) não encontrado", "⚠️"))
+                    print(log_message("WARNING", f"Canal {TICKET_PANEL_CHANNEL_ID} não encontrado", "⚠️"))
                     self._ticket_panel_message_id = None
             except discord.NotFound:
-                print(log_message("WARNING", f"Mensagem do painel de tickets (ID: {self._ticket_panel_message_id}) não encontrada", "⚠️"))
+                print(log_message("WARNING", f"Mensagem {self._ticket_panel_message_id} não encontrada", "⚠️"))
                 self._ticket_panel_message_id = None
             except Exception as e:
-                print(log_message("ERROR", f"Erro ao re-associar View do painel de tickets: {e}", "❌"))
+                print(log_message("ERROR", f"Erro ao reativar view: {e}", "❌"))
                 self._ticket_panel_message_id = None
 
         if TICKET_MODERATOR_ROLE_ID:
@@ -304,260 +264,265 @@ class TicketsCog(commands.Cog):
                 if guild:
                     self.ticket_moderator_role = guild.get_role(TICKET_MODERATOR_ROLE_ID)
                     if not self.ticket_moderator_role:
-                        print(log_message("WARNING", f"Cargo de moderador de tickets (ID: {TICKET_MODERATOR_ROLE_ID}) não encontrado na guild '{guild.name}'", "⚠️"))
+                        print(log_message("WARNING", f"Cargo {TICKET_MODERATOR_ROLE_ID} não encontrado", "⚠️"))
                 else:
-                    print(log_message("WARNING", "Bot não conseguiu obter a guild para popular o cargo de moderador de tickets", "⚠️"))
+                    print(log_message("WARNING", "Guild não obtida", "⚠️"))
             else:
-                print(log_message("WARNING", "Bot não está em nenhuma guild para popular o cargo de moderador de tickets", "⚠️"))
+                print(log_message("WARNING", "Sem guilds", "⚠️"))
         else:
             print(log_message("WARNING", "TICKET_MODERATOR_ROLE_ID não configurado", "⚠️"))
 
-        open_tickets = get_all_open_tickets()
-        for ticket in open_tickets:
+        for ticket in get_all_open_tickets():
             try:
                 channel = self.bot.get_channel(ticket['channel_id'])
                 if channel:
                     async for message in channel.history(limit=50):
-                        welcome_embed_title_prefix = TICKET_MESSAGES.get("ticket_welcome_embed", {}).get("title", "").split('{')[0].strip()
-                        if message.author == self.bot.user and message.embeds and (message.embeds[0].title or "").startswith(welcome_embed_title_prefix):
+                        prefix = TICKET_MESSAGES.get("ticket_welcome_embed", {}).get("title", "").split('{')[0].strip()
+                        if message.author == self.bot.user and message.embeds and message.embeds[0].title.startswith(prefix):
                             self.bot.add_view(TicketControlView(self), message_id=message.id)
-                            print(log_message("INFO", f"View de controle persistente adicionada para ticket {channel.name}", "🔗"))
+                            print(log_message("INFO", f"View reativada para {channel.name}", "🔗"))
                             break
                     else:
-                        print(log_message("WARNING", f"Mensagem de controle do ticket {channel.name} não encontrada", "⚠️"))
+                        print(log_message("WARNING", f"Mensagem não encontrada em {channel.name}", "⚠️"))
                 else:
-                    print(log_message("WARNING", f"Canal do ticket {ticket['channel_id']} não encontrado, removendo do DB", "⚠️"))
+                    print(log_message("WARNING", f"Canal {ticket['channel_id']} não encontrado, removido do DB", "⚠️"))
                     remove_ticket_from_db(ticket['channel_id'])
             except Exception as e:
-                print(log_message("ERROR", f"Erro ao re-adicionar view para ticket {ticket['channel_id']}: {e}", "❌"))
+                print(log_message("ERROR", f"Erro ao reativar view em {ticket['channel_id']}: {e}", "❌"))
 
-    @commands.command(name="setuptickets", help="Envia o painel de criação de tickets para o canal configurado.")
+    @commands.command(name="setuptickets")
     @commands.has_permissions(administrator=True)
     async def setup_tickets_panel(self, ctx: commands.Context):
         await ctx.defer(ephemeral=True)
 
         channel = self.bot.get_channel(TICKET_PANEL_CHANNEL_ID)
         if not channel:
-            await ctx.send(f"Erro: Canal do painel de tickets (ID: {TICKET_PANEL_CHANNEL_ID}) não encontrado.", ephemeral=True)
-            print(log_message("ERROR", f"Canal do painel de tickets (ID: {TICKET_PANEL_CHANNEL_ID}) não encontrado para !setuptickets", "❌"))
+            await ctx.send("Canal não encontrado.", ephemeral=True)
+            print(log_message("ERROR", f"Canal {TICKET_PANEL_CHANNEL_ID} não encontrado", "❌"))
             return
 
         if not TICKET_MESSAGES:
             load_ticket_messages()
             if not TICKET_MESSAGES:
-                await ctx.send("Erro: Não foi possível carregar ticket_messages.json.", ephemeral=True)
-                print(log_message("ERROR", "Falha ao carregar ticket_messages.json para !setuptickets", "❌"))
+                await ctx.send("Erro ao carregar ticket_messages.json.", ephemeral=True)
+                print(log_message("ERROR", "Falha ao carregar JSON", "❌"))
                 return
 
-        panel_embed_data = TICKET_MESSAGES.get("ticket_panel_embed", {})
+        panel_data = TICKET_MESSAGES.get("ticket_panel_embed", {})
         embed = discord.Embed(
-            title=panel_embed_data.get("title", "Sistema de Tickets"),
-            description=panel_embed_data.get("description", "Selecione uma categoria para abrir um ticket."),
-            color=discord.Color.from_str(panel_embed_data.get("color", "#36393F"))
+            title=panel_data.get("title", ""),
+            description=panel_data.get("description", ""),
+            color=discord.Color.from_str(panel_data.get("color", "#36393F"))
         )
-        if "fields" in panel_embed_data:
-            for field in panel_embed_data["fields"]:
-                embed.add_field(
-                    name=field.get("name", " "),
-                    value=field.get("value", " "),
-                    inline=field.get("inline", False)
-                )
-        embed.set_thumbnail(url=panel_embed_data.get("thumbnail_url", None))
-        embed.set_footer(text=panel_embed_data.get("footer", "").format(data_hora=datetime.now(timezone.utc).astimezone().strftime('%d/%m/%Y %H:%M')))
+        for field in panel_data.get("fields", []):
+            embed.add_field(name=field.get("name", ""), value=field.get("value", ""), inline=field.get("inline", False))
+        if thumbnail := panel_data.get("thumbnail_url"):
+            embed.set_thumbnail(url=thumbnail)
+        embed.set_footer(text=panel_data.get("footer", "").format(data_hora=datetime.now(timezone.utc).astimezone().strftime('%d/%m/%Y %H:%M')))
 
         view = TicketPanelView(self)
-
         try:
             if self._ticket_panel_message_id:
                 message = await channel.fetch_message(self._ticket_panel_message_id)
                 await message.edit(embed=embed, view=view)
-                await ctx.send("Painel de tickets atualizado com sucesso!", ephemeral=True)
-                print(log_message("INFO", f"Painel de tickets atualizado (ID: {self._ticket_panel_message_id}) por {ctx.author.display_name} ({ctx.author.id})", "🔄"))
+                await ctx.send("Painel atualizado.", ephemeral=True)
+                print(log_message("INFO", f"Painel atualizado por {ctx.author}", "🔄"))
             else:
                 message = await channel.send(embed=embed, view=view)
                 await self._save_ticket_panel_message_id(message.id)
-                await ctx.send("Painel de tickets enviado com sucesso!", ephemeral=True)
-                print(log_message("INFO", f"Painel de tickets enviado (ID: {message.id}) por {ctx.author.display_name} ({ctx.author.id})", "📩"))
+                await ctx.send("Painel enviado.", ephemeral=True)
+                print(log_message("INFO", f"Painel enviado por {ctx.author} (ID: {message.id})", "📩"))
         except discord.NotFound:
             message = await channel.send(embed=embed, view=view)
             await self._save_ticket_panel_message_id(message.id)
-            await ctx.send("Painel de tickets recriado com sucesso!", ephemeral=True)
-            print(log_message("INFO", f"Painel de tickets recriado (ID: {message.id}) por {ctx.author.display_name} ({ctx.author.id})", "📩"))
+            await ctx.send("Painel recriado.", ephemeral=True)
+            print(log_message("INFO", f"Painel recriado por {ctx.author} (ID: {message.id})", "📩"))
         except Exception as e:
-            await ctx.send(f"Erro ao enviar/atualizar painel de tickets: {e}", ephemeral=True)
-            print(log_message("ERROR", f"Erro ao enviar/atualizar painel de tickets por {ctx.author.display_name} ({ctx.author.id}): {e}", "❌"))
+            await ctx.send(f"Erro: {e}", ephemeral=True)
+            print(log_message("ERROR", f"Erro ao enviar painel por {ctx.author}: {e}", "❌"))
 
     async def create_ticket_transcript(self, channel: discord.TextChannel):
         transcript_channel = self.bot.get_channel(TICKET_TRANSCRIPTS_CHANNEL_ID)
         if not transcript_channel:
-            print(log_message("ERROR", f"Canal de transcritos (ID: {TICKET_TRANSCRIPTS_CHANNEL_ID}) não encontrado", "❌"))
+            print(log_message("ERROR", f"Canal {TICKET_TRANSCRIPTS_CHANNEL_ID} não encontrado", "❌"))
             return
 
         ticket_data = next((t for t in get_all_open_tickets() if t['channel_id'] == channel.id), None)
-        creator_name = ticket_data['creator_name'] if ticket_data else "Desconhecido"
-        category_name = ticket_data['category'] if ticket_data else "N/A"
+        creator = ticket_data['creator_name'] if ticket_data else "Desconhecido"
+        category = ticket_data['category'] if ticket_data else "N/A"
 
-        transcript_content = (
-            f"--- Transcrito do Ticket: {channel.name} ({category_name}) ---\n"
-            f"Criado por: {creator_name} ({ticket_data['creator_id'] if ticket_data else 'Desconhecido ID'}) em {ticket_data['created_at'] if ticket_data else 'N/A'}\n"
+        content = (
+            f"--- Transcrito: {channel.name} ({category}) ---\n"
+            f"Criado por: {creator} ({ticket_data['creator_id'] if ticket_data else 'Desconhecido'}) em {ticket_data['created_at'] if ticket_data else 'N/A'}\n"
             f"Fechado em: {datetime.now(timezone.utc).astimezone().strftime('%d/%m/%Y %H:%M:%S')}\n\n"
         )
 
         messages = [msg async for msg in channel.history(limit=None, oldest_first=True)]
-        welcome_embed_title_prefix = TICKET_MESSAGES.get("ticket_welcome_embed", {}).get("title", "").split('{')[0].strip()
+        prefix = TICKET_MESSAGES.get("ticket_welcome_embed", {}).get("title", "").split('{')[0].strip()
 
         for msg in messages:
-            is_bot_generated_welcome = msg.author == self.bot.user and msg.embeds and (msg.embeds[0].title or "").startswith(welcome_embed_title_prefix)
-            is_bot_generated_close = msg.author == self.bot.user and msg.content == TICKET_MESSAGES.get("close_message", "Fechando ticket em 5 segundos...")
-            if is_bot_generated_welcome or is_bot_generated_close:
+            if (msg.author == self.bot.user and msg.embeds and msg.embeds[0].title.startswith(prefix)) or \
+               (msg.author == self.bot.user and msg.content == TICKET_MESSAGES.get("close_message", "")):
                 continue
-
-            timestamp_str = msg.created_at.astimezone().strftime('%d/%m/%Y %H:%M:%S')
-            transcript_content += f"[{timestamp_str}] {msg.author.display_name}: {msg.content}\n"
-            for attachment in msg.attachments:
-                transcript_content += f"     [Anexo: {attachment.url}]\n"
+            timestamp = msg.created_at.astimezone().strftime('%d/%m/%Y %H:%M:%S')
+            content += f"[{timestamp}] {msg.author.display_name}: {msg.content}\n"
+            for attach in msg.attachments:
+                content += f"     [Anexo: {attach.url}]\n"
             if msg.embeds:
                 for embed in msg.embeds:
-                    desc_preview = (embed.description[:100] + "...") if embed.description and len(embed.description) > 100 else (embed.description or "")
-                    transcript_content += f"     [Embed: Título='{embed.title or 'Sem Título'}', Descrição='{desc_preview}']\n"
+                    desc = (embed.description[:100] + "...") if embed.description and len(embed.description) > 100 else embed.description or ""
+                    content += f"     [Embed: '{embed.title or 'Sem Título'}', '{desc}']\n"
 
-        transcript_content += f"\n--- Fim do Transcrito ---\n"
+        content += "\n--- Fim do Transcrito ---\n"
 
         file_path = f"{channel.name}_transcript.txt"
         with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(transcript_content)
+            f.write(content)
 
         try:
-            file_to_send = discord.File(file_path, filename=f"{channel.name}.txt")
-            transcript_embed_data = TICKET_MESSAGES.get("transcript_embed", {})
+            file = discord.File(file_path, filename=f"{channel.name}.txt")
+            transcript_data = TICKET_MESSAGES.get("transcript_embed", {})
             embed = discord.Embed(
-                title=transcript_embed_data.get("title", "").format(canal=channel.name),
-                description=transcript_embed_data.get("description", "").format(criador=creator_name, categoria=category_name),
-                color=discord.Color.from_str(transcript_embed_data.get("color", "#99AAB5"))
+                title=transcript_data.get("title", "").format(canal=channel.name),
+                description=transcript_data.get("description", "").format(criador=creator, categoria=category),
+                color=discord.Color.from_str(transcript_data.get("color", "#99AAB5"))
             )
-            embed.set_thumbnail(url=transcript_embed_data.get("thumbnail_url", None))
-            embed.set_footer(text=transcript_embed_data.get("footer", "").format(data_hora=datetime.now(timezone.utc).astimezone().strftime('%d/%m/%Y %H:%M')))
-            await transcript_channel.send(embed=embed, file=file_to_send)
-            print(log_message("INFO", f"Transcrito do ticket {channel.name} enviado para o canal de logs", "📄"))
+            if thumbnail := transcript_data.get("thumbnail_url"):
+                embed.set_thumbnail(url=thumbnail)
+            embed.set_footer(text=transcript_data.get("footer", "").format(data_hora=datetime.now(timezone.utc).astimezone().strftime('%d/%m/%Y %H:%M')))
+            await transcript_channel.send(embed=embed, file=file)
+            print(log_message("INFO", f"Transcrito de {channel.name} enviado", "📄"))
         except Exception as e:
-            print(log_message("ERROR", f"Erro ao enviar transcrito do ticket {channel.name}: {e}", "❌"))
+            print(log_message("ERROR", f"Erro ao enviar transcrito de {channel.name}: {e}", "❌"))
         finally:
             if os.path.exists(file_path):
                 os.remove(file_path)
 
-    @app_commands.command(name="add", description="Adiciona um usuário ou cargo ao ticket atual.")
-    @app_commands.describe(membro_ou_cargo="O usuário ou cargo a ser adicionado.")
+    @app_commands.command(name="add", description="Adiciona um usuário ou cargo ao ticket.")
+    @app_commands.describe(target="Usuário ou cargo a adicionar.")
     @app_commands.checks.has_role(TICKET_MODERATOR_ROLE_ID)
-    async def add_to_ticket(self, interaction: discord.Interaction, membro_ou_cargo: Union[discord.Member, discord.Role]):
+    async def add_to_ticket(self, interaction: discord.Interaction, target: Union[discord.Member, discord.Role]):
         if not isinstance(interaction.channel, discord.TextChannel):
-            await interaction.response.send_message("Este comando só pode ser usado em um canal de texto.", ephemeral=True)
-            print(log_message("WARNING", f"Comando /add usado fora de canal de texto por {interaction.user.display_name} ({interaction.user.id})", "⚠️"))
+            await interaction.response.send_message("Use em canal de texto.", ephemeral=True)
+            print(log_message("WARNING", f"/add fora de canal de texto por {interaction.user}", "⚠️"))
             return
 
-        open_tickets = get_all_open_tickets()
-        is_ticket_channel = any(ticket['channel_id'] == interaction.channel.id for ticket in open_tickets)
-        if not is_ticket_channel:
-            await interaction.response.send_message("Este comando só pode ser usado em um canal de ticket.", ephemeral=True)
-            print(log_message("WARNING", f"Comando /add usado fora de canal de ticket por {interaction.user.display_name} ({interaction.user.id})", "⚠️"))
+        if not any(t['channel_id'] == interaction.channel.id for t in get_all_open_tickets()):
+            await interaction.response.send_message("Use em canal de ticket.", ephemeral=True)
+            print(log_message("WARNING", f"/add fora de ticket por {interaction.user}", "⚠️"))
             return
 
         try:
-            await interaction.channel.set_permissions(membro_ou_cargo, view_channel=True, send_messages=True, attach_files=True)
-            await interaction.response.send_message(f"✅ {membro_ou_cargo.mention} foi adicionado(a) ao ticket.", ephemeral=True)
-            print(log_message("INFO", f"{interaction.user.display_name} ({interaction.user.id}) adicionou {membro_ou_cargo.name} ao ticket {interaction.channel.name}", "➕"))
+            await interaction.channel.set_permissions(target, view_channel=True, send_messages=True, attach_files=True)
+            await interaction.response.send_message(f"✅ {target.mention} adicionado.", ephemeral=True)
+            print(log_message("INFO", f"{interaction.user} adicionou {target.name} a {interaction.channel.name}", "➕"))
         except discord.Forbidden:
-            await interaction.response.send_message("❌ Não tenho permissão para gerenciar permissões neste canal.", ephemeral=True)
-            print(log_message("ERROR", f"Permissão negada ao adicionar {membro_ou_cargo.name} ao ticket {interaction.channel.name}", "🚫"))
+            await interaction.response.send_message("❌ Sem permissão para alterar permissões.", ephemeral=True)
+            print(log_message("ERROR", f"Permissão negada ao adicionar {target.name} por {interaction.user}", "🚫"))
         except Exception as e:
-            await interaction.response.send_message(f"❌ Erro ao adicionar {membro_ou_cargo.name}: {e}", ephemeral=True)
-            print(log_message("ERROR", f"Erro ao adicionar {membro_ou_cargo.name} ao ticket {interaction.channel.name}: {e}", "❌"))
+            await interaction.response.send_message(f"❌ Erro: {e}", ephemeral=True)
+            print(log_message("ERROR", f"Erro ao adicionar {target.name} por {interaction.user}: {e}", "❌"))
 
-    @app_commands.command(name="rename", description="Muda o nome do canal do ticket atual.")
-    @app_commands.describe(novo_nome="O novo nome para o canal do ticket.")
+    @app_commands.command(name="remove", description="Remove um usuário ou cargo do ticket.")
+    @app_commands.describe(target="Usuário ou cargo a remover.")
     @app_commands.checks.has_role(TICKET_MODERATOR_ROLE_ID)
-    async def rename_ticket(self, interaction: discord.Interaction, novo_nome: str):
+    async def remove_from_ticket(self, interaction: discord.Interaction, target: Union[discord.Member, discord.Role]):
         if not isinstance(interaction.channel, discord.TextChannel):
-            await interaction.response.send_message("Este comando só pode ser usado em um canal de texto.", ephemeral=True)
-            print(log_message("WARNING", f"Comando /rename usado fora de canal de texto por {interaction.user.display_name} ({interaction.user.id})", "⚠️"))
+            await interaction.response.send_message("Use em canal de texto.", ephemeral=True)
+            print(log_message("WARNING", f"/remove fora de canal de texto por {interaction.user}", "⚠️"))
             return
 
-        open_tickets = get_all_open_tickets()
-        is_ticket_channel = any(ticket['channel_id'] == interaction.channel.id for ticket in open_tickets)
-        if not is_ticket_channel:
-            await interaction.response.send_message("Este comando só pode ser usado em um canal de ticket.", ephemeral=True)
-            print(log_message("WARNING", f"Comando /rename usado fora de canal de ticket por {interaction.user.display_name} ({interaction.user.id})", "⚠️"))
+        if not any(t['channel_id'] == interaction.channel.id for t in get_all_open_tickets()):
+            await interaction.response.send_message("Use em canal de ticket.", ephemeral=True)
+            print(log_message("WARNING", f"/remove fora de ticket por {interaction.user}", "⚠️"))
             return
 
-        if len(novo_nome) > 100:
-            await interaction.response.send_message("O nome do canal não pode ter mais de 100 caracteres.", ephemeral=True)
-            print(log_message("WARNING", f"Nome de canal muito longo ({len(novo_nome)} caracteres) por {interaction.user.display_name} ({interaction.user.id})", "⚠️"))
+        try:
+            await interaction.channel.set_permissions(target, overwrite=None)  # Remove permissões
+            await interaction.response.send_message(f"✅ {target.mention} removido.", ephemeral=True)
+            print(log_message("INFO", f"{interaction.user} removeu {target.name} de {interaction.channel.name}", "➖"))
+        except discord.Forbidden:
+            await interaction.response.send_message("❌ Sem permissão para alterar permissões.", ephemeral=True)
+            print(log_message("ERROR", f"Permissão negada ao remover {target.name} por {interaction.user}", "🚫"))
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Erro: {e}", ephemeral=True)
+            print(log_message("ERROR", f"Erro ao remover {target.name} por {interaction.user}: {e}", "❌"))
+
+    @app_commands.command(name="rename", description="Renomeia o canal do ticket.")
+    @app_commands.describe(new_name="Novo nome do ticket.")
+    @app_commands.checks.has_role(TICKET_MODERATOR_ROLE_ID)
+    async def rename_ticket(self, interaction: discord.Interaction, new_name: str):
+        if not isinstance(interaction.channel, discord.TextChannel):
+            await interaction.response.send_message("Use em canal de texto.", ephemeral=True)
+            print(log_message("WARNING", f"/rename fora de canal de texto por {interaction.user}", "⚠️"))
             return
 
-        formatted_name = novo_nome.lower().replace(' ', '-')
-        formatted_name = ''.join(c for c in formatted_name if c.isalnum() or c == '-')
+        if not any(t['channel_id'] == interaction.channel.id for t in get_all_open_tickets()):
+            await interaction.response.send_message("Use em canal de ticket.", ephemeral=True)
+            print(log_message("WARNING", f"/rename fora de ticket por {interaction.user}", "⚠️"))
+            return
 
+        if len(new_name) > 100:
+            await interaction.response.send_message("Nome muito longo (máx. 100 caracteres).", ephemeral=True)
+            print(log_message("WARNING", f"Nome longo ({len(new_name)}) por {interaction.user}", "⚠️"))
+            return
+
+        formatted_name = ''.join(c for c in new_name.lower().replace(' ', '-') if c.isalnum() or c == '-')
         try:
             old_name = interaction.channel.name
             await interaction.channel.edit(name=formatted_name)
-            await interaction.response.send_message(f"✅ Nome do ticket alterado de `{old_name}` para `{formatted_name}`.", ephemeral=True)
-            print(log_message("INFO", f"{interaction.user.display_name} ({interaction.user.id}) renomeou ticket de {old_name} para {formatted_name}", "✏️"))
+            await interaction.response.send_message(f"✅ Renomeado de `{old_name}` para `{formatted_name}`.", ephemeral=True)
+            print(log_message("INFO", f"{interaction.user} renomeou {old_name} para {formatted_name}", "✏️"))
         except discord.Forbidden:
-            await interaction.response.send_message("❌ Não tenho permissão para gerenciar canais.", ephemeral=True)
-            print(log_message("ERROR", f"Permissão negada ao renomear ticket {interaction.channel.name}", "🚫"))
+            await interaction.response.send_message("❌ Sem permissão para renomear.", ephemeral=True)
+            print(log_message("ERROR", f"Permissão negada ao renomear {interaction.channel.name} por {interaction.user}", "🚫"))
         except Exception as e:
-            await interaction.response.send_message(f"❌ Erro ao renomear o ticket: {e}", ephemeral=True)
-            print(log_message("ERROR", f"Erro ao renomear ticket {interaction.channel.name}: {e}", "❌"))
+            await interaction.response.send_message(f"❌ Erro: {e}", ephemeral=True)
+            print(log_message("ERROR", f"Erro ao renomear {interaction.channel.name} por {interaction.user}: {e}", "❌"))
 
-    @commands.command(name="cleartickets", help="Deleta todos os canais de ticket abertos e remove-os do DB.")
+    @commands.command(name="cleartickets")
     @commands.has_permissions(administrator=True)
-    async def clear_all_tickets_prefix(self, ctx: commands.Context):
+    async def clear_all_tickets(self, ctx: commands.Context):
         await ctx.defer(ephemeral=True)
-
-        open_tickets = get_all_open_tickets()
-        if not open_tickets:
-            await ctx.send("Não há tickets abertos para limpar.", ephemeral=True)
-            print(log_message("INFO", f"Comando !cleartickets executado por {ctx.author.display_name} ({ctx.author.id}): nenhum ticket aberto", "ℹ️"))
+        tickets = get_all_open_tickets()
+        if not tickets:
+            await ctx.send("Nenhum ticket aberto.", ephemeral=True)
+            print(log_message("INFO", f"Sem tickets para limpar por {ctx.author}", "ℹ️"))
             return
 
-        deleted_count = 0
-        failed_deletions = []
+        deleted = 0
+        failed = []
+        await ctx.send(f"Limpando {len(tickets)} tickets...", ephemeral=True)
+        print(log_message("INFO", f"Iniciando limpeza de {len(tickets)} tickets por {ctx.author}", "🧹"))
 
-        await ctx.send(f"A iniciar limpeza de {len(open_tickets)} tickets...", ephemeral=True)
-        print(log_message("INFO", f"Iniciando limpeza de {len(open_tickets)} tickets por {ctx.author.display_name} ({ctx.author.id})", "🧹"))
-
-        for ticket in open_tickets:
+        for ticket in tickets:
             channel_id = ticket['channel_id']
-            channel_name = f"ticket-{ticket.get('creator_name', 'unknown').lower().replace(' ', '-')}"
+            name = f"ticket-{ticket.get('creator_name', 'unknown').lower().replace(' ', '-')}"
             try:
                 channel = self.bot.get_channel(channel_id)
                 if channel:
-                    await channel.delete(reason="Comando !cleartickets")
+                    await channel.delete(reason="!cleartickets")
                     remove_ticket_from_db(channel_id)
-                    deleted_count += 1
-                    print(log_message("INFO", f"Ticket {channel_name} (ID: {channel_id}) deletado e removido do DB", "🗑️"))
+                    deleted += 1
+                    print(log_message("INFO", f"Ticket {name} (ID: {channel_id}) deletado", "🗑️"))
                 else:
                     remove_ticket_from_db(channel_id)
-                    deleted_count += 1
-                    print(log_message("INFO", f"Ticket {channel_name} (ID: {channel_id}) não encontrado no Discord, removido do DB", "🗑️"))
+                    deleted += 1
+                    print(log_message("INFO", f"Ticket {name} (ID: {channel_id}) removido do DB", "🗑️"))
             except discord.NotFound:
                 remove_ticket_from_db(channel_id)
-                deleted_count += 1
-                print(log_message("INFO", f"Ticket {channel_name} (ID: {channel_id}) já não existia no Discord, removido do DB", "🗑️"))
+                deleted += 1
+                print(log_message("INFO", f"Ticket {name} (ID: {channel_id}) já deletado", "🗑️"))
             except Exception as e:
-                failed_deletions.append(f"Ticket {channel_name} (ID: {channel_id}): {e}")
-                print(log_message("ERROR", f"Erro ao deletar ticket {channel_name} (ID: {channel_id}): {e}", "❌"))
+                failed.append(f"{name} (ID: {channel_id}): {e}")
+                print(log_message("ERROR", f"Erro ao deletar {name}: {e}", "❌"))
 
-        if failed_deletions:
-            error_message = "\n".join(failed_deletions)
-            await ctx.send(
-                f"Limpeza concluída. {deleted_count} tickets limpos.\n"
-                f"Erros:\n```\n{error_message}\n```",
-                ephemeral=True
-            )
-            print(log_message("WARNING", f"Limpeza de tickets com {len(failed_deletions)} erros", "⚠️"))
+        if failed:
+            await ctx.send(f"Limpou {deleted} tickets.\nErros:\n```\n{'\n'.join(failed)}\n```", ephemeral=True)
+            print(log_message("WARNING", f"Limpeza com {len(failed)} erros", "⚠️"))
         else:
-            await ctx.send(f"Limpeza concluída! {deleted_count} tickets limpos.", ephemeral=True)
-            print(log_message("INFO", f"Comando !cleartickets finalizado: {deleted_count} tickets limpos", "✅"))
+            await ctx.send(f"Limpou {deleted} tickets com sucesso.", ephemeral=True)
+            print(log_message("INFO", f"Limpeza concluída: {deleted} tickets", "✅"))
 
 async def setup(bot):
     await bot.add_cog(TicketsCog(bot))
