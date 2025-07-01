@@ -52,8 +52,8 @@
         "footer": "LSPD - Sistema de Tickets • {data_hora}"
       }
     },
-    "Suporte Geral": {
-      "dropdown_description": "Para dúvidas e assistência geral.",
+    "Recrutamentos": {
+      "dropdown_description": "Entrar em contacto com a equipa de recrutamentos.",
       "welcome_embed": {
         "title": "Bem Vindo ao Suporte da LSPD",
         "description": "O teu ticket foi aberto com sucesso! A equipa de suporte irá analisá-lo e responder assim que possível.\n\n",
