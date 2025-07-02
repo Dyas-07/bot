@@ -388,16 +388,27 @@ class TicketsCog(commands.Cog):
 
     @app_commands.command(name="add", description="Adiciona um usuário ou cargo ao ticket.")
     @app_commands.describe(target="Usuário ou cargo a adicionar.")
-    @app_commands.checks.has_role(TICKET_MODERATOR_ROLE_ID)  # Substituir por lógica por categoria, se necessário
     async def add_to_ticket(self, interaction: discord.Interaction, target: Union[discord.Member, discord.Role]):
         if not isinstance(interaction.channel, discord.TextChannel):
             await interaction.response.send_message("Use em canal de texto.", ephemeral=True)
             print(log_message("WARNING", f"/add fora de canal de texto por {interaction.user}", "⚠️"))
             return
 
-        if not any(t['channel_id'] == interaction.channel.id for t in get_all_open_tickets()):
+        ticket_data = next((t for t in get_all_open_tickets() if t['channel_id'] == interaction.channel.id), None)
+        if not ticket_data:
             await interaction.response.send_message("Use em canal de ticket.", ephemeral=True)
             print(log_message("WARNING", f"/add fora de ticket por {interaction.user}", "⚠️"))
+            return
+
+        guild = interaction.guild
+        category = ticket_data['category']
+        moderator_role_ids = TICKET_MODERATOR_ROLES.get(category, [])
+        is_moderator = any(guild.get_role(role_id) in interaction.user.roles for role_id in moderator_role_ids)
+        is_creator = ticket_data and ticket_data['creator_id'] == interaction.user.id
+
+        if not is_moderator and not is_creator:
+            await interaction.response.send_message("Você não tem permissão para usar este comando.", ephemeral=True)
+            print(log_message("WARNING", f"Sem permissão para /add por {interaction.user}", "🚫"))
             return
 
         try:
@@ -413,16 +424,27 @@ class TicketsCog(commands.Cog):
 
     @app_commands.command(name="remove", description="Remove um usuário ou cargo do ticket.")
     @app_commands.describe(target="Usuário ou cargo a remover.")
-    @app_commands.checks.has_role(TICKET_MODERATOR_ROLE_ID)  # Substituir por lógica por categoria, se necessário
     async def remove_from_ticket(self, interaction: discord.Interaction, target: Union[discord.Member, discord.Role]):
         if not isinstance(interaction.channel, discord.TextChannel):
             await interaction.response.send_message("Use em canal de texto.", ephemeral=True)
             print(log_message("WARNING", f"/remove fora de canal de texto por {interaction.user}", "⚠️"))
             return
 
-        if not any(t['channel_id'] == interaction.channel.id for t in get_all_open_tickets()):
+        ticket_data = next((t for t in get_all_open_tickets() if t['channel_id'] == interaction.channel.id), None)
+        if not ticket_data:
             await interaction.response.send_message("Use em canal de ticket.", ephemeral=True)
             print(log_message("WARNING", f"/remove fora de ticket por {interaction.user}", "⚠️"))
+            return
+
+        guild = interaction.guild
+        category = ticket_data['category']
+        moderator_role_ids = TICKET_MODERATOR_ROLES.get(category, [])
+        is_moderator = any(guild.get_role(role_id) in interaction.user.roles for role_id in moderator_role_ids)
+        is_creator = ticket_data and ticket_data['creator_id'] == interaction.user.id
+
+        if not is_moderator and not is_creator:
+            await interaction.response.send_message("Você não tem permissão para usar este comando.", ephemeral=True)
+            print(log_message("WARNING", f"Sem permissão para /remove por {interaction.user}", "🚫"))
             return
 
         try:
@@ -438,16 +460,27 @@ class TicketsCog(commands.Cog):
 
     @app_commands.command(name="rename", description="Renomeia o canal do ticket.")
     @app_commands.describe(new_name="Novo nome do ticket.")
-    @app_commands.checks.has_role(TICKET_MODERATOR_ROLE_ID)  # Substituir por lógica por categoria, se necessário
     async def rename_ticket(self, interaction: discord.Interaction, new_name: str):
         if not isinstance(interaction.channel, discord.TextChannel):
             await interaction.response.send_message("Use em canal de texto.", ephemeral=True)
             print(log_message("WARNING", f"/rename fora de canal de texto por {interaction.user}", "⚠️"))
             return
 
-        if not any(t['channel_id'] == interaction.channel.id for t in get_all_open_tickets()):
+        ticket_data = next((t for t in get_all_open_tickets() if t['channel_id'] == interaction.channel.id), None)
+        if not ticket_data:
             await interaction.response.send_message("Use em canal de ticket.", ephemeral=True)
             print(log_message("WARNING", f"/rename fora de ticket por {interaction.user}", "⚠️"))
+            return
+
+        guild = interaction.guild
+        category = ticket_data['category']
+        moderator_role_ids = TICKET_MODERATOR_ROLES.get(category, [])
+        is_moderator = any(guild.get_role(role_id) in interaction.user.roles for role_id in moderator_role_ids)
+        is_creator = ticket_data and ticket_data['creator_id'] == interaction.user.id
+
+        if not is_moderator and not is_creator:
+            await interaction.response.send_message("Você não tem permissão para usar este comando.", ephemeral=True)
+            print(log_message("WARNING", f"Sem permissão para /rename por {interaction.user}", "🚫"))
             return
 
         if len(new_name) > 100:
