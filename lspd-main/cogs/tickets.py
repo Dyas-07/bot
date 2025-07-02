@@ -183,8 +183,10 @@ class TicketControlView(discord.ui.View):
     @discord.ui.button(label="Fechar Ticket", style=discord.ButtonStyle.danger, emoji="🔒", custom_id="close_ticket_button")
     async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(ephemeral=True)
-        is_moderator = any(guild.get_role(role_id) in interaction.user.roles for role_id in TICKET_MODERATOR_ROLES.get(next((t['category'] for t in get_all_open_tickets() if t['channel_id'] == interaction.channel.id), ""), []))
+        guild = interaction.guild
         ticket_data = next((t for t in get_all_open_tickets() if t['channel_id'] == interaction.channel.id), None)
+        category = ticket_data['category'] if ticket_data else ""
+        is_moderator = any(guild.get_role(role_id) in interaction.user.roles for role_id in TICKET_MODERATOR_ROLES.get(category, []))
         is_creator = ticket_data and ticket_data['creator_id'] == interaction.user.id
 
         if not is_moderator and not is_creator:
