@@ -37,7 +37,7 @@ TICKET_CATEGORIES = [
 ]
 TICKET_MODERATOR_ROLES = {
     "Administração": [1198476681602678826],  # Cargo para Suporte Técnico
-    "Recrutamentos": [1198476681569128481,1198476681602678827],      # Cargo para Reclamações
+    "Recrutamentos": [1198476681569128481, 1198476681602678827],      # Cargo para Reclamações
     "Recursos Humanos": [1198476681569128480], # Cargo para Sugestões
     "Eventos": [1198476681569128480]
 }
