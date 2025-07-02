@@ -116,7 +116,7 @@ class TicketCategorySelect(discord.ui.Select):
             # Garantir que o bot tenha permissões completas
             overwrites[guild.me] = discord.PermissionOverwrite(read_messages=True, send_messages=True, embed_links=True, attach_files=True, manage_channels=True)
             # Adicionar os cargos moderadores específicos da categoria
-            moderator_role_ids = TICKET_MODERATOR_ROLES.get(selected_category, [])
+            moderator_role_ids = list(dict.fromkeys(TICKET_MODERATOR_ROLES.get(selected_category, [])))  # Remove duplicatas
             for role_id in moderator_role_ids:
                 moderator_role = guild.get_role(role_id)
                 if moderator_role:
@@ -158,8 +158,8 @@ class TicketCategorySelect(discord.ui.Select):
                 data_hora=datetime.now(timezone.utc).astimezone().strftime('%d/%m/%Y %H:%M')
             ))
 
-            # Menção aos cargos moderadores encontrados
-            mentions = " ".join(moderator_role.mention for role_id in moderator_role_ids if guild.get_role(role_id))
+            # Menção aos cargos moderadores encontrados, evitando duplicatas
+            mentions = " ".join(guild.get_role(role_id).mention for role_id in moderator_role_ids if guild.get_role(role_id))
             await ticket_channel.send(
                 content=f"{interaction.user.mention} {mentions}",
                 embed=embed,
