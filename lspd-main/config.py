@@ -36,9 +36,10 @@ TICKET_CATEGORIES = [
     ("Eventos", "Contactar a equipa de eventos.", "🎆", int(os.getenv('TICKET_CATEGORY_EVENTS')) if os.getenv('TICKET_CATEGORY_EVENTS') else None),
 ]
 TICKET_MODERATOR_ROLES = {
-    "Administração": 1198476681602678826,  # Cargo para Suporte Técnico
-    "Recrutamentos": 1198476681569128481,      # Cargo para Reclamações
-    "Recursos Humanos": 1198476681569128480         # Cargo para Sugestões
+    "Administração": [1198476681602678826],  # Cargo para Suporte Técnico
+    "Recrutamentos": [1198476681569128481,1198476681602678827]      # Cargo para Reclamações
+    "Recursos Humanos": [1198476681569128480], # Cargo para Sugestões
+    "Eventos": [1198476681569128480]
 }
 
 
