@@ -10,7 +10,7 @@ import asyncio
 from config import (
     TICKET_PANEL_CHANNEL_ID, TICKET_PANEL_MESSAGE_FILE, TICKET_MESSAGES_FILE,
     TICKET_CATEGORIES, TICKET_MODERATOR_ROLE_ID, TICKET_TRANSCRIPTS_CHANNEL_ID,
-    ROLE_ID
+    ROLE_ID, TICKET_MODERATOR_ROLES
 )
 from database import add_ticket_to_db, remove_ticket_from_db, get_all_open_tickets
 
@@ -108,15 +108,23 @@ class TicketCategorySelect(discord.ui.Select):
                 print(log_message("ERROR", f"Categoria ID {category_id} inválida", "❌"))
                 return
 
-            # Herdando permissões da categoria, apenas adicionando exceções específicas
-            overwrites = {}
-            # Garantir que o criador do ticket tenha acesso, se não já permitido pela categoria
-            overwrites[interaction.user] = discord.PermissionOverwrite(read_messages=True, send_messages=True, attach_files=True)
+            # Definir permissões para restringir acesso apenas ao criador e ao cargo específico da categoria
+            overwrites = {
+                guild.default_role: discord.PermissionOverwrite(read_messages=False),  # Bloquear acesso geral
+                interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True, attach_files=True)  # Criador tem acesso
+            }
             # Garantir que o bot tenha permissões completas
             overwrites[guild.me] = discord.PermissionOverwrite(read_messages=True, send_messages=True, embed_links=True, attach_files=True, manage_channels=True)
-            # Adicionar moderadores, se configurado
-            if self.cog.ticket_moderator_role:
-                overwrites[self.cog.ticket_moderator_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_channels=True)
+            # Adicionar o cargo moderador específico da categoria
+            moderator_role_id = TICKET_MODERATOR_ROLES.get(selected_category)
+            if moderator_role_id:
+                moderator_role = guild.get_role(moderator_role_id)
+                if moderator_role:
+                    overwrites[moderator_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_channels=True)
+                else:
+                    print(log_message("WARNING", f"Cargo ID {moderator_role_id} para '{selected_category}' não encontrado", "⚠️"))
+            else:
+                print(log_message("WARNING", f"Sem cargo moderador configurado para '{selected_category}'", "⚠️"))
 
             ticket_channel = await category_channel.create_text_channel(
                 name=f"ticket-{interaction.user.name.lower().replace(' ', '-')}",
@@ -151,7 +159,7 @@ class TicketCategorySelect(discord.ui.Select):
             ))
 
             await ticket_channel.send(
-                content=f"{interaction.user.mention} {self.cog.ticket_moderator_role.mention if self.cog.ticket_moderator_role else ''}",
+                content=f"{interaction.user.mention} {moderator_role.mention if moderator_role else ''}",
                 embed=embed,
                 view=TicketControlView(self.cog)
             )
@@ -205,7 +213,7 @@ class TicketsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self._ticket_panel_message_id = None
-        self.ticket_moderator_role = None
+        self.ticket_moderator_role = None  # Este campo será ignorado, pois usaremos TICKET_MODERATOR_ROLES
         load_ticket_messages()
 
     async def _load_ticket_panel_message_id(self):
@@ -245,19 +253,9 @@ class TicketsCog(commands.Cog):
                 print(log_message("ERROR", f"Erro ao reativar view: {e}", "❌"))
                 self._ticket_panel_message_id = None
 
-        if TICKET_MODERATOR_ROLE_ID:
-            if self.bot.guilds:
-                guild = self.bot.get_guild(self.bot.guilds[0].id)
-                if guild:
-                    self.ticket_moderator_role = guild.get_role(TICKET_MODERATOR_ROLE_ID)
-                    if not self.ticket_moderator_role:
-                        print(log_message("WARNING", f"Cargo {TICKET_MODERATOR_ROLE_ID} não encontrado", "⚠️"))
-                else:
-                    print(log_message("WARNING", "Guild não obtida", "⚠️"))
-            else:
-                print(log_message("WARNING", "Sem guilds", "⚠️"))
-        else:
-            print(log_message("WARNING", "TICKET_MODERATOR_ROLE_ID não configurado", "⚠️"))
+        # Não precisamos carregar TICKET_MODERATOR_ROLE_ID aqui, pois usaremos TICKET_MODERATOR_ROLES
+        if not TICKET_MODERATOR_ROLES:
+            print(log_message("WARNING", "TICKET_MODERATOR_ROLES não configurado em config.py", "⚠️"))
 
         for ticket in get_all_open_tickets():
             try:
@@ -387,7 +385,7 @@ class TicketsCog(commands.Cog):
 
     @app_commands.command(name="add", description="Adiciona um usuário ou cargo ao ticket.")
     @app_commands.describe(target="Usuário ou cargo a adicionar.")
-    @app_commands.checks.has_role(TICKET_MODERATOR_ROLE_ID)
+    @app_commands.checks.has_role(TICKET_MODERATOR_ROLE_ID)  # Substituir por lógica por categoria, se necessário
     async def add_to_ticket(self, interaction: discord.Interaction, target: Union[discord.Member, discord.Role]):
         if not isinstance(interaction.channel, discord.TextChannel):
             await interaction.response.send_message("Use em canal de texto.", ephemeral=True)
@@ -412,7 +410,7 @@ class TicketsCog(commands.Cog):
 
     @app_commands.command(name="remove", description="Remove um usuário ou cargo do ticket.")
     @app_commands.describe(target="Usuário ou cargo a remover.")
-    @app_commands.checks.has_role(TICKET_MODERATOR_ROLE_ID)
+    @app_commands.checks.has_role(TICKET_MODERATOR_ROLE_ID)  # Substituir por lógica por categoria, se necessário
     async def remove_from_ticket(self, interaction: discord.Interaction, target: Union[discord.Member, discord.Role]):
         if not isinstance(interaction.channel, discord.TextChannel):
             await interaction.response.send_message("Use em canal de texto.", ephemeral=True)
@@ -437,7 +435,7 @@ class TicketsCog(commands.Cog):
 
     @app_commands.command(name="rename", description="Renomeia o canal do ticket.")
     @app_commands.describe(new_name="Novo nome do ticket.")
-    @app_commands.checks.has_role(TICKET_MODERATOR_ROLE_ID)
+    @app_commands.checks.has_role(TICKET_MODERATOR_ROLE_ID)  # Substituir por lógica por categoria, se necessário
     async def rename_ticket(self, interaction: discord.Interaction, new_name: str):
         if not isinstance(interaction.channel, discord.TextChannel):
             await interaction.response.send_message("Use em canal de texto.", ephemeral=True)
