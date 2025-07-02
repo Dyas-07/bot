@@ -108,23 +108,23 @@ class TicketCategorySelect(discord.ui.Select):
                 print(log_message("ERROR", f"Categoria ID {category_id} inválida", "❌"))
                 return
 
-            # Definir permissões para restringir acesso apenas ao criador e ao cargo específico da categoria
+            # Definir permissões para restringir acesso apenas ao criador e aos cargos específicos da categoria
             overwrites = {
                 guild.default_role: discord.PermissionOverwrite(read_messages=False),  # Bloquear acesso geral
                 interaction.user: discord.PermissionOverwrite(read_messages=True, send_messages=True, attach_files=True)  # Criador tem acesso
             }
             # Garantir que o bot tenha permissões completas
             overwrites[guild.me] = discord.PermissionOverwrite(read_messages=True, send_messages=True, embed_links=True, attach_files=True, manage_channels=True)
-            # Adicionar o cargo moderador específico da categoria
-            moderator_role_id = TICKET_MODERATOR_ROLES.get(selected_category)
-            if moderator_role_id:
-                moderator_role = guild.get_role(moderator_role_id)
+            # Adicionar os cargos moderadores específicos da categoria
+            moderator_role_ids = TICKET_MODERATOR_ROLES.get(selected_category, [])
+            for role_id in moderator_role_ids:
+                moderator_role = guild.get_role(role_id)
                 if moderator_role:
                     overwrites[moderator_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_channels=True)
                 else:
-                    print(log_message("WARNING", f"Cargo ID {moderator_role_id} para '{selected_category}' não encontrado", "⚠️"))
-            else:
-                print(log_message("WARNING", f"Sem cargo moderador configurado para '{selected_category}'", "⚠️"))
+                    print(log_message("WARNING", f"Cargo ID {role_id} para '{selected_category}' não encontrado", "⚠️"))
+            if not moderator_role_ids:
+                print(log_message("WARNING", f"Sem cargos moderadores configurados para '{selected_category}'", "⚠️"))
 
             ticket_channel = await category_channel.create_text_channel(
                 name=f"ticket-{interaction.user.name.lower().replace(' ', '-')}",
@@ -158,8 +158,10 @@ class TicketCategorySelect(discord.ui.Select):
                 data_hora=datetime.now(timezone.utc).astimezone().strftime('%d/%m/%Y %H:%M')
             ))
 
+            # Menção aos cargos moderadores encontrados
+            mentions = " ".join(moderator_role.mention for role_id in moderator_role_ids if guild.get_role(role_id))
             await ticket_channel.send(
-                content=f"{interaction.user.mention} {moderator_role.mention if moderator_role else ''}",
+                content=f"{interaction.user.mention} {mentions}",
                 embed=embed,
                 view=TicketControlView(self.cog)
             )
@@ -181,7 +183,7 @@ class TicketControlView(discord.ui.View):
     @discord.ui.button(label="Fechar Ticket", style=discord.ButtonStyle.danger, emoji="🔒", custom_id="close_ticket_button")
     async def close_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(ephemeral=True)
-        is_moderator = self.cog.ticket_moderator_role and self.cog.ticket_moderator_role in interaction.user.roles
+        is_moderator = any(guild.get_role(role_id) in interaction.user.roles for role_id in TICKET_MODERATOR_ROLES.get(next((t['category'] for t in get_all_open_tickets() if t['channel_id'] == interaction.channel.id), ""), []))
         ticket_data = next((t for t in get_all_open_tickets() if t['channel_id'] == interaction.channel.id), None)
         is_creator = ticket_data and ticket_data['creator_id'] == interaction.user.id
 
@@ -213,7 +215,7 @@ class TicketsCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self._ticket_panel_message_id = None
-        self.ticket_moderator_role = None  # Este campo será ignorado, pois usaremos TICKET_MODERATOR_ROLES
+        self.ticket_moderator_role = None  # Ignorado, usamos TICKET_MODERATOR_ROLES
         load_ticket_messages()
 
     async def _load_ticket_panel_message_id(self):
@@ -253,7 +255,6 @@ class TicketsCog(commands.Cog):
                 print(log_message("ERROR", f"Erro ao reativar view: {e}", "❌"))
                 self._ticket_panel_message_id = None
 
-        # Não precisamos carregar TICKET_MODERATOR_ROLE_ID aqui, pois usaremos TICKET_MODERATOR_ROLES
         if not TICKET_MODERATOR_ROLES:
             print(log_message("WARNING", "TICKET_MODERATOR_ROLES não configurado em config.py", "⚠️"))
 
