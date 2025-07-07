@@ -158,10 +158,9 @@ class TicketCategorySelect(discord.ui.Select):
                 data_hora=datetime.now(timezone.utc).astimezone().strftime('%d/%m/%Y %H:%M')
             ))
 
-            # Menção aos cargos moderadores encontrados, evitando duplicatas
-            mentions = " ".join(guild.get_role(role_id).mention for role_id in moderator_role_ids if guild.get_role(role_id))
+            # Enviar mensagem sem menções de cargos
             await ticket_channel.send(
-                content=f"{interaction.user.mention} {mentions}",
+                content=f"{interaction.user.mention}",  # Apenas o criador, sem mentions de cargos
                 embed=embed,
                 view=TicketControlView(self.cog)
             )
